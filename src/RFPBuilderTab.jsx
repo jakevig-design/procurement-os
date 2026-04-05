@@ -558,6 +558,48 @@ export default function RFPBuilderTab() {
     setRenamingId(null);
   }
 
+  // ── Export ────────────────────────────────────────────────────────────────
+  function handleExport() {
+    const draftTitle = drafts.find(d => d.id === activeDraftId)?.title || "RFP Draft";
+
+    // Exclude current_footprint — internal only, never goes to vendor
+    const { current_footprint, ...vendorFacingData } = rfpData;
+
+    const exportDoc = {
+      meta: {
+        title:       rfpData.title       || draftTitle,
+        company:     rfpData.company     || "",
+        date:        rfpData.date        || new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+        poc_sourcing:rfpData.poc_sourcing || "",
+        poc_dt:      rfpData.poc_dt      || "",
+        exportedAt:  new Date().toISOString(),
+        draftId:     activeDraftId,
+      },
+      overview:   rfpData.overview            || "",
+      scope:      rfpData.scope               || "",
+      requirements: reqs.map(r => ({
+        category:    r.cat,
+        requirement: r.t,
+        priority:    "Must",             // all Musts — by design
+      })),
+      supplier_questions: rfpData.supplier_questions || "",
+      evaluation_criteria: evalData
+        .filter(c => c.sel)
+        .map(c => ({ criterion: c.c, weight: c.w })),
+      timeline: tlData
+        .filter(t => t.a || t.d)
+        .map(t => ({ activity: t.a, target_date: t.d })),
+      response_format: rfpData.response_format || "",
+    };
+
+    const filename = `${draftTitle.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0,10)}.json`;
+    const blob = new Blob([JSON.stringify(exportDoc, null, 2)], { type: "application/json" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const sec = RFP_SECTIONS.find(s => s.id === activeSection);
 
   return (
@@ -665,9 +707,18 @@ export default function RFPBuilderTab() {
                 <span>{sec?.icon}</span>{sec?.label}
                 {sec?.isBrief && <span style={{ fontSize: 9, color: C.gold, fontFamily: "monospace", background: C.goldDim, border: `1px solid ${C.goldBorder}`, borderRadius: 3, padding: "2px 7px", marginLeft: 4 }}>INTERNAL ONLY</span>}
               </div>
-              <span style={{ fontSize: 11, color: C.muted, fontFamily: "monospace" }}>
-                {reqs.length} req · {evalData.filter(c => c.sel).length} criteria
-              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontSize: 11, color: C.muted, fontFamily: "monospace" }}>
+                  {reqs.length} req · {evalData.filter(c => c.sel).length} criteria
+                </span>
+                <button
+                  style={{ ...S.btn("primary"), opacity: briefComplete ? 1 : 0.45 }}
+                  onClick={briefComplete ? handleExport : () => alert("Complete the Project Brief before exporting.")}
+                  title={briefComplete ? "Export RFP data as JSON" : "Complete the Project Brief to enable export"}
+                >
+                  ⬇ Export
+                </button>
+              </div>
             </div>
             <div style={S.content}>
               {sec?.isBrief && (
