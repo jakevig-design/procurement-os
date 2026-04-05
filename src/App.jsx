@@ -327,8 +327,6 @@ function updatedLabel(d) {
 
 function stageIndex(s) { return STAGES.indexOf(s); }
 
-// Sourcing item values: "na" | "required" | "in-progress" | "complete"
-// na = excluded from score, required = 0, in-progress = 50, complete = 100
 function calcRiskScore(sourcing) {
   if (!sourcing) return 0;
   const items = SOURCING_CHECKLIST.map(i => sourcing[i.key] || "required").filter(v => v !== "na");
@@ -477,15 +475,10 @@ function TimelineTab({ project, onUpdate }) {
       <div style={{ fontSize: 12, color: C.muted, marginBottom: "1.5rem", fontStyle: "italic" }}>
         Day 1 = project kickoff. Click any milestone to mark complete. Click Edit to adjust labels or dates.
       </div>
-
-      {/* Visual arc */}
       <div style={{ ...css.card, marginBottom: "1.5rem", padding: "32px 24px 24px" }}>
         <div style={{ display: "flex", alignItems: "flex-start", position: "relative" }}>
-          {/* Track line */}
           <div style={{ position: "absolute", top: 16, left: "5%", right: "5%", height: 2, background: C.border, borderRadius: 1, zIndex: 0 }} />
-          {/* Progress fill */}
           <div style={{ position: "absolute", top: 16, left: "5%", height: 2, background: C.gold, borderRadius: 1, zIndex: 0, width: `${(sorted.filter(t => t.done).length / Math.max(sorted.length - 1, 1)) * 90}%`, transition: "width 0.5s ease" }} />
-
           {sorted.map((t, i) => {
             const date = new Date(startDate);
             date.setDate(date.getDate() + t.day - 1);
@@ -528,8 +521,6 @@ function TimelineTab({ project, onUpdate }) {
           })}
         </div>
       </div>
-
-      {/* List */}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {sorted.map(t => (
           <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 16px", border: `1px solid ${t.done ? C.green + "44" : C.border}`, borderRadius: 8, background: t.done ? C.green + "08" : C.surface, transition: "all 0.2s" }}>
@@ -574,7 +565,6 @@ function SourcingTab({ project, onUpdate }) {
 
   return (
     <div>
-      {/* Score strip */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: "1.5rem" }}>
         <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${scoreColor}44`, borderRadius: 8, padding: "16px 18px" }}>
           <div style={{ fontSize: 10, color: C.muted, fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>READINESS SCORE</div>
@@ -598,8 +588,6 @@ function SourcingTab({ project, onUpdate }) {
           <div style={{ fontSize: 12, color: C.text, lineHeight: 1.6 }}>{project.problemStage || "—"}</div>
         </div>
       </div>
-
-      {/* Legend */}
       <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
         {Object.entries(STATUS_CONFIG).map(([k, v]) => (
           <div key={k} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: v.color, fontFamily: "monospace" }}>
@@ -608,8 +596,6 @@ function SourcingTab({ project, onUpdate }) {
           </div>
         ))}
       </div>
-
-      {/* Checklist */}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {SOURCING_CHECKLIST.map(item => {
           const val = sourcing[item.key] || "required";
@@ -620,7 +606,6 @@ function SourcingTab({ project, onUpdate }) {
                 <div style={{ fontSize: 13, fontWeight: 700, color: val === "na" ? C.muted : "#fff", marginBottom: 2 }}>{item.label}</div>
                 <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>{item.desc}</div>
               </div>
-              {/* 4-state selector */}
               <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
                 {STATUS_CYCLE.map(s => {
                   const sc = STATUS_CONFIG[s];
@@ -671,7 +656,6 @@ function VendorTab({ project, onUpdate }) {
           <button style={css.btn("primary")} onClick={() => setAdding(true)}>+ Add first vendor</button>
         </div>
       )}
-
       {vendors.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 12, marginBottom: 16 }}>
           {vendors.map(v => (
@@ -689,7 +673,6 @@ function VendorTab({ project, onUpdate }) {
           ))}
         </div>
       )}
-
       {adding ? (
         <div style={{ ...css.card, borderColor: "rgba(200,146,42,0.3)" }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: C.gold, fontFamily: "monospace", letterSpacing: 1, marginBottom: 14 }}>NEW VENDOR</div>
@@ -716,7 +699,7 @@ function VendorTab({ project, onUpdate }) {
   );
 }
 
-// ── APPROVALS TAB ────────────────────────────────────────────────────────────
+// ── APPROVALS TAB ─────────────────────────────────────────────────────────────
 
 function ApprovalsTab({ project, onUpdate }) {
   const signoffs = project.signoffs || [];
@@ -796,14 +779,12 @@ function ApprovalsTab({ project, onUpdate }) {
               </div>
             ) : (
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", border: `1px solid ${C.border}`, borderRadius: 8, background: C.surface }}>
-                {/* Reorder arrows */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0 }}>
                   <button onClick={() => moveUp(i)} disabled={i === 0}
                     style={{ background: "none", border: "none", color: i === 0 ? "rgba(255,255,255,0.1)" : C.muted, cursor: i === 0 ? "default" : "pointer", fontSize: 10, lineHeight: 1, padding: "1px 4px" }}>▲</button>
                   <button onClick={() => moveDown(i)} disabled={i === signoffs.length - 1}
                     style={{ background: "none", border: "none", color: i === signoffs.length - 1 ? "rgba(255,255,255,0.1)" : C.muted, cursor: i === signoffs.length - 1 ? "default" : "pointer", fontSize: 10, lineHeight: 1, padding: "1px 4px" }}>▼</button>
                 </div>
-                {/* Order number */}
                 <div style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: C.muted, fontFamily: "monospace", flexShrink: 0 }}>{i + 1}</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{s.role}</div>
@@ -821,8 +802,6 @@ function ApprovalsTab({ project, onUpdate }) {
           </div>
         ))}
       </div>
-
-      {/* Add approver */}
       {adding ? (
         <div style={{ padding: "14px 18px", border: `1px solid ${C.gold}44`, borderRadius: 8, background: C.gold + "08" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.gold, fontFamily: "monospace", letterSpacing: 1, marginBottom: 12 }}>NEW APPROVER</div>
@@ -846,7 +825,6 @@ function ApprovalsTab({ project, onUpdate }) {
       ) : (
         <button style={css.btn()} onClick={() => setAdding(true)}>+ Add approver</button>
       )}
-
       <div style={{ marginTop: 16, fontSize: 12, color: C.muted, fontStyle: "italic" }}>
         Use ▲▼ to reorder. LDAP/directory integration planned for future release.
       </div>
@@ -857,17 +835,14 @@ function ApprovalsTab({ project, onUpdate }) {
 // ── SUMMARY TAB ───────────────────────────────────────────────────────────────
 
 function SummaryTab({ project, riskScore, riskColor }) {
-  const cfg = STAGE_CONFIG[project.stage];
   const si = stageIndex(project.stage);
   const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
   const confirmedReqs = REQ_CATEGORIES.filter(r => project.requirements[r.key]?.status === "confirmed");
   const draftReqs = REQ_CATEGORIES.filter(r => project.requirements[r.key]?.status === "draft");
   const vendors = project.vendors || [];
   const timeline = [...(project.timeline || [])].sort((a, b) => a.day - b.day);
-  const doneMilestones = timeline.filter(t => t.done);
   const nextMilestone = timeline.find(t => !t.done);
   const approvedSignoffs = (project.signoffs || []).filter(s => s.status === "approved");
-  const pendingSignoffs = (project.signoffs || []).filter(s => s.status === "pending" || s.status === "required");
 
   const S = {
     page: { background: "#0F0F12", border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden", maxWidth: 860, margin: "0 auto" },
@@ -876,7 +851,6 @@ function SummaryTab({ project, riskScore, riskColor }) {
     section: { marginBottom: 28 },
     sectionLabel: { fontSize: 9, letterSpacing: 2.5, textTransform: "uppercase", color: C.muted, fontFamily: "monospace", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 },
     sectionLine: { flex: 1, height: 1, background: C.border },
-    row2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 },
     row3: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 },
     metaCard: { background: "rgba(255,255,255,0.03)", border: `1px solid ${C.border}`, borderRadius: 6, padding: "12px 14px" },
     metaLabel: { fontSize: 9, color: C.muted, fontFamily: "monospace", letterSpacing: 1, marginBottom: 4 },
@@ -886,19 +860,12 @@ function SummaryTab({ project, riskScore, riskColor }) {
     tlItem: { display: "flex", alignItems: "center", gap: 10, padding: "6px 0" },
   };
 
-  function printSummary() {
-    window.print();
-  }
-
   return (
     <div>
-      {/* Print / export action */}
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginBottom: 16 }}>
-        <button style={css.btn()} onClick={printSummary}>Print / Save as PDF</button>
+        <button style={css.btn()} onClick={() => window.print()}>Print / Save as PDF</button>
       </div>
-
       <div style={S.page} id="summary-page">
-        {/* Header */}
         <div style={S.header}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
@@ -911,8 +878,6 @@ function SummaryTab({ project, riskScore, riskColor }) {
               <div style={{ fontSize: 10, color: C.muted, fontFamily: "monospace", marginTop: 8 }}>{today}</div>
             </div>
           </div>
-
-          {/* Stage progress bar */}
           <div style={{ marginTop: 20 }}>
             <div style={{ display: "flex", gap: 0 }}>
               {STAGES.map((s, i) => {
@@ -929,10 +894,7 @@ function SummaryTab({ project, riskScore, riskColor }) {
             </div>
           </div>
         </div>
-
         <div style={S.body}>
-
-          {/* 1. Use case + engagement context */}
           {project.useCase && (
             <div style={S.section}>
               <div style={S.sectionLabel}>Use case<div style={S.sectionLine} /></div>
@@ -946,8 +908,6 @@ function SummaryTab({ project, riskScore, riskColor }) {
               )}
             </div>
           )}
-
-          {/* 2. Requirements */}
           <div style={S.section}>
             <div style={S.sectionLabel}>Requirements<div style={S.sectionLine} /></div>
             {confirmedReqs.length === 0 && draftReqs.length === 0 ? (
@@ -970,8 +930,6 @@ function SummaryTab({ project, riskScore, riskColor }) {
               </div>
             )}
           </div>
-
-          {/* 3. Sourcing readiness */}
           <div style={S.section}>
             <div style={S.sectionLabel}>
               Sourcing readiness
@@ -1000,8 +958,6 @@ function SummaryTab({ project, riskScore, riskColor }) {
               })}
             </div>
           </div>
-
-          {/* 4. Timeline */}
           {timeline.length > 0 && (
             <div style={S.section}>
               <div style={S.sectionLabel}>Timeline<div style={S.sectionLine} /></div>
@@ -1023,8 +979,6 @@ function SummaryTab({ project, riskScore, riskColor }) {
               )}
             </div>
           )}
-
-          {/* 5. Budget & commercial */}
           <div style={S.section}>
             <div style={S.sectionLabel}>Commercial parameters<div style={S.sectionLine} /></div>
             <div style={S.row3}>
@@ -1050,8 +1004,6 @@ function SummaryTab({ project, riskScore, riskColor }) {
               ) : null;
             })()}
           </div>
-
-          {/* 6. Vendor shortlist */}
           {vendors.length > 0 && (
             <div style={S.section}>
               <div style={S.sectionLabel}>Vendor shortlist<div style={S.sectionLine} /></div>
@@ -1071,8 +1023,6 @@ function SummaryTab({ project, riskScore, riskColor }) {
               ))}
             </div>
           )}
-
-          {/* Project status & approvals */}
           <div style={S.section}>
             <div style={S.sectionLabel}>Status &amp; approvals<div style={S.sectionLine} /></div>
             <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 14 }}>
@@ -1093,8 +1043,6 @@ function SummaryTab({ project, riskScore, riskColor }) {
               ))}
             </div>
           </div>
-
-          {/* Footer */}
           <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ fontSize: 10, color: C.muted, fontFamily: "monospace" }}>Generated by Procurement OS · {today}</div>
             <div style={{ fontSize: 10, color: C.muted, fontFamily: "monospace" }}>Acuity Sourcing</div>
@@ -1105,13 +1053,13 @@ function SummaryTab({ project, riskScore, riskColor }) {
   );
 }
 
-// ── REQUIREMENTS TAB ─────────────────────────────────────────────────────────
+// ── REQUIREMENTS TAB ──────────────────────────────────────────────────────────
 
 function RequirementsTab({ project, onUpdate }) {
   const [expandedReq, setExpandedReq] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState(null);
-  const [aiPreview, setAiPreview] = useState(null); // generated but not yet accepted
+  const [aiPreview, setAiPreview] = useState(null);
 
   async function generateRequirements() {
     if (!project.useCase?.trim()) {
@@ -1201,15 +1149,12 @@ Guidelines per category:
 
   return (
     <div>
-      {/* Use case callout */}
       <div style={{ ...css.card, marginBottom: "1.5rem", borderLeft: `3px solid ${C.gold}` }}>
         <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: C.gold, fontFamily: "monospace", marginBottom: 8 }}>Use case</div>
         <div style={{ fontSize: 13, color: project.useCase ? C.text : C.muted, lineHeight: 1.7, fontStyle: project.useCase ? "normal" : "italic" }}>
           {project.useCase || "No use case entered yet — add one in the Overview tab."}
         </div>
       </div>
-
-      {/* AI generation bar */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: "rgba(200,146,42,0.06)", border: `1px solid rgba(200,146,42,0.2)`, borderRadius: 8, marginBottom: "1.5rem" }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 2 }}>AI requirements draft</div>
@@ -1220,15 +1165,11 @@ Guidelines per category:
           {aiLoading ? "Generating…" : aiPreview ? "Regenerate ↗" : "Generate with AI ↗"}
         </button>
       </div>
-
-      {/* Error */}
       {aiError && (
         <div style={{ padding: "10px 14px", background: "rgba(226,75,74,0.1)", border: `1px solid rgba(226,75,74,0.3)`, borderRadius: 8, fontSize: 12, color: C.red, marginBottom: "1rem" }}>
           {aiError}
         </div>
       )}
-
-      {/* AI preview banner */}
       {aiPreview && (
         <div style={{ padding: "12px 16px", background: "rgba(93,184,138,0.06)", border: `1px solid rgba(93,184,138,0.25)`, borderRadius: 8, marginBottom: "1rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <div style={{ fontSize: 12, color: C.green }}>
@@ -1240,8 +1181,6 @@ Guidelines per category:
           </div>
         </div>
       )}
-
-      {/* Requirement cards */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {REQ_CATEGORIES.map(r => {
           const req = project.requirements[r.key];
@@ -1261,10 +1200,8 @@ Guidelines per category:
                 </span>
                 <span style={{ fontSize: 11, color: C.muted }}>{isOpen ? "▲" : "▼"}</span>
               </div>
-
               {isOpen && (
                 <div style={{ padding: "0 16px 16px" }}>
-                  {/* AI preview for this category */}
                   {preview && (
                     <div style={{ padding: "10px 14px", background: "rgba(93,184,138,0.06)", border: `1px solid rgba(93,184,138,0.2)`, borderRadius: 6, marginBottom: 12 }}>
                       <div style={{ fontSize: 10, color: C.green, fontFamily: "monospace", fontWeight: 700, marginBottom: 6 }}>AI DRAFT</div>
@@ -1309,7 +1246,6 @@ function ProjectDetail({ project, onBack, onUpdate }) {
   const [nameDraft, setNameDraft] = useState(project.name);
   const [editingUseCase, setEditingUseCase] = useState(false);
   const [useCaseDraft, setUseCaseDraft] = useState(project.useCase);
-  const cfg = STAGE_CONFIG[project.stage];
   const si = stageIndex(project.stage);
   const riskScore = calcRiskScore(project.sourcing);
   const riskColor = riskScore >= 75 ? C.green : riskScore >= 50 ? C.gold : C.red;
@@ -1326,7 +1262,6 @@ function ProjectDetail({ project, onBack, onUpdate }) {
         onMouseEnter={e => e.currentTarget.style.color = "#fff"} onMouseLeave={e => e.currentTarget.style.color = C.muted}>
         ← All projects
       </div>
-
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "1.5rem" }}>
         <div>
           {editingName ? (
@@ -1364,9 +1299,7 @@ function ProjectDetail({ project, onBack, onUpdate }) {
           )}
         </div>
       </div>
-
       <StageProgress current={project.stage} />
-
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 10, marginBottom: "1.5rem" }}>
         {[
           { label: "Budget range", value: project.budgetLow > 0 ? `${fmt(project.budgetLow)} – ${fmt(project.budgetHigh)}` : "TBD" },
@@ -1381,8 +1314,6 @@ function ProjectDetail({ project, onBack, onUpdate }) {
           </div>
         ))}
       </div>
-
-      {/* Tabs */}
       <div style={{ display: "flex", borderBottom: `1px solid ${C.border}`, marginBottom: "1.5rem", overflowX: "auto", scrollbarWidth: "none" }}>
         {detailTabs.map(t => (
           <div key={t} onClick={() => setActiveTab(t)}
@@ -1391,13 +1322,7 @@ function ProjectDetail({ project, onBack, onUpdate }) {
           </div>
         ))}
       </div>
-
-      {/* ── SUMMARY ── */}
-      {activeTab === "summary" && (
-        <SummaryTab project={project} riskScore={riskScore} riskColor={riskColor} />
-      )}
-
-      {/* ── OVERVIEW ── */}
+      {activeTab === "summary" && <SummaryTab project={project} riskScore={riskScore} riskColor={riskColor} />}
       {activeTab === "overview" && (
         <div>
           <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: C.muted, fontFamily: "monospace", marginBottom: 10 }}>Use case</div>
@@ -1418,12 +1343,10 @@ function ProjectDetail({ project, onBack, onUpdate }) {
               <div style={{ fontSize: 10, color: C.muted, marginTop: 8, fontFamily: "monospace" }}>Click to edit</div>
             </div>
           )}
-
           <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: C.muted, fontFamily: "monospace", marginBottom: 10 }}>Where in the process</div>
           <div style={{ ...css.card, marginBottom: "1.5rem" }}>
             <div style={{ fontSize: 13, color: C.text }}>{project.problemStage || "—"}</div>
           </div>
-
           <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: C.muted, fontFamily: "monospace", marginBottom: 10 }}>Requirements summary</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: "1.5rem" }}>
             {REQ_CATEGORIES.map(r => {
@@ -1436,7 +1359,6 @@ function ProjectDetail({ project, onBack, onUpdate }) {
               );
             })}
           </div>
-
           <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: C.muted, fontFamily: "monospace", marginBottom: 10 }}>Approval chain</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {project.signoffs.map((s, i) => (
@@ -1451,22 +1373,11 @@ function ProjectDetail({ project, onBack, onUpdate }) {
           </div>
         </div>
       )}
-
-      {/* ── REQUIREMENTS ── */}
-      {activeTab === "requirements" && (
-        <RequirementsTab project={project} onUpdate={onUpdate} />
-      )}
-
-      {activeTab === "vendors"   && <VendorTab   project={project} onUpdate={onUpdate} />}
-      {activeTab === "sourcing"  && <SourcingTab  project={project} onUpdate={onUpdate} />}
-      {activeTab === "timeline"  && <TimelineTab  project={project} onUpdate={onUpdate} />}
-
-      {/* ── APPROVALS ── */}
-      {activeTab === "approvals" && (
-        <ApprovalsTab project={project} onUpdate={onUpdate} />
-      )}
-
-      {/* ── ACTIVITY ── */}
+      {activeTab === "requirements" && <RequirementsTab project={project} onUpdate={onUpdate} />}
+      {activeTab === "vendors"      && <VendorTab   project={project} onUpdate={onUpdate} />}
+      {activeTab === "sourcing"     && <SourcingTab  project={project} onUpdate={onUpdate} />}
+      {activeTab === "timeline"     && <TimelineTab  project={project} onUpdate={onUpdate} />}
+      {activeTab === "approvals"    && <ApprovalsTab project={project} onUpdate={onUpdate} />}
       {activeTab === "activity" && (
         <div>
           {project.activity.map((a, i) => (
@@ -1672,7 +1583,6 @@ export default function App() {
   const [showNew, setShowNew] = useState(false);
   const [dbStatus, setDbStatus] = useState("loading");
 
-  // Load from Supabase on mount
   useEffect(() => {
     loadAllProjects().then(data => {
       if (data && data.length > 0) {
@@ -1685,11 +1595,9 @@ export default function App() {
   }, []);
 
   function updateProject(id, updates) {
-    // Optimistic UI
     setProjects(ps => ps.map(p => p.id === id ? { ...p, ...updates } : p));
     if (selectedProject?.id === id) setSelectedProject(p => ({ ...p, ...updates }));
 
-    // Write to Supabase in background
     if (updates.requirements) {
       const reqs = updates.requirements;
       Object.keys(reqs).forEach(key => {
@@ -1706,7 +1614,6 @@ export default function App() {
     if (updates.signoffs) saveSignoffs(id, updates.signoffs);
     if (updates.timeline) saveTimeline(id, updates.timeline);
 
-    // Top-level project fields
     const topLevel = {};
     ["name","stage","useCase","problemStage","budgetLow","budgetHigh","category","requestor"].forEach(f => {
       if (updates[f] !== undefined) topLevel[f] = updates[f];
@@ -1787,8 +1694,9 @@ export default function App() {
         {tab === "projects" && syncedProject && (
           <ProjectDetail project={syncedProject} onBack={() => setSelectedProject(null)} onUpdate={updateProject} />
         )}
+        {tab === "rfp" && <RFPBuilderTab />}
       </div>
       {showNew && <NewProjectModal onSave={addProject} onClose={() => setShowNew(false)} />}
     </div>
   );
-}{tab === "rfp" && <RFPBuilderTab />}
+}
