@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "./supabase";
+import RFPBuilderTab from './RFPBuilderTab';
 
 // ── SUPABASE HELPERS ──────────────────────────────────────────────────────────
 
@@ -1660,6 +1661,7 @@ function NewProjectModal({ onSave, onClose }) {
 const TABS = [
   { id: "dashboard", label: "Overview" },
   { id: "projects",  label: "Projects" },
+  { id: "rfp",       label: "RFP Builder" },
 ];
 
 export default function App() {
@@ -1789,4 +1791,4 @@ export default function App() {
       {showNew && <NewProjectModal onSave={addProject} onClose={() => setShowNew(false)} />}
     </div>
   );
-}
+}{tab === "rfp" && <RFPBuilderTab />}
