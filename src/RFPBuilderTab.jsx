@@ -1,1021 +1,733 @@
-/**
- * RFPBuilderTab.jsx
- * Drop this component into Procurement OS as a new tab.
- * Usage: import RFPBuilderTab from './RFPBuilderTab';
- *        Then add { id: "rfp", label: "RFP Builder" } to your TABS array
- *        and render <RFPBuilderTab /> in the tab body switcher.
- *
- * Requires: React, useState, useEffect, useRef (all from 'react')
- * AI features call the Anthropic API via /api/claude proxy (same as existing Prospect Writer)
- */
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "./supabase";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-
-// ─── THEME (matches Acuity Sourcing Slate + Warm Gold palette) ────────────────
+// ─── THEME ────────────────────────────────────────────────────────────────────
 const C = {
-  bg:       "#1A1D21",
-  surface:  "#22262C",
-  card:     "#2A2F37",
-  border:   "#343B44",
-  gold:     "#C8922A",
-  goldDim:  "rgba(200,146,42,0.15)",
-  goldBorder:"rgba(200,146,42,0.35)",
-  text:     "#E8E4DC",
-  muted:    "#7A8490",
-  success:  "#5DB88A",
-  warn:     "#E8A84A",
-  danger:   "#C0504D",
-  blue:     "#4A90D9",
+  bg:         "#0B0B0E",
+  surface:    "#111116",
+  border:     "rgba(255,255,255,0.07)",
+  gold:       "#C8922A",
+  goldDim:    "rgba(200,146,42,0.12)",
+  goldBorder: "rgba(200,146,42,0.35)",
+  text:       "#E2DDD6",
+  muted:      "rgba(255,255,255,0.35)",
+  green:      "#5DB88A",
+  red:        "#E24B4A",
+  blue:       "#4A90D9",
 };
 
-// ─── RFP SECTION DEFINITIONS (mirrors the template structure) ─────────────────
+// ─── SECTIONS ─────────────────────────────────────────────────────────────────
 const RFP_SECTIONS = [
   {
-    id: "cover",
-    label: "Cover & Meta",
-    icon: "📋",
+    id: "cover", label: "Cover & Meta", icon: "📋",
+    tip: "The POC structure is a control mechanism. Every vendor touch that bypasses the stated POC is a negotiation integrity violation. Name it explicitly and enforce it.",
     fields: [
-      { key: "title",       label: "RFP Title",              type: "text",     placeholder: "e.g. Enterprise CRM Platform — RFP 2025" },
-      { key: "company",     label: "Issuing Company",        type: "text",     placeholder: "Your company name" },
-      { key: "date",        label: "Issue Date",             type: "text",     placeholder: "e.g. April 2025" },
-      { key: "poc_sourcing",label: "Sourcing Owner (Name / Email / Title)", type: "text", placeholder: "Jane Smith / jane@co.com / VP Procurement" },
-      { key: "poc_dt",      label: "DT / Technical Owner (Name / Email / Title)", type: "text", placeholder: "John Doe / john@co.com / VP Engineering" },
-    ]
+      { key: "title",        label: "RFP Title",                                  type: "text", placeholder: "e.g. Enterprise CRM Platform — RFP 2025" },
+      { key: "company",      label: "Issuing Company",                            type: "text", placeholder: "Your company name" },
+      { key: "date",         label: "Issue Date",                                 type: "text", placeholder: "e.g. April 2025" },
+      { key: "poc_sourcing", label: "Sourcing POC (Name / Email / Title)",        type: "text", placeholder: "Jane Smith / jane@co.com / VP Procurement" },
+      { key: "poc_dt",       label: "DT / Technical POC (Name / Email / Title)",  type: "text", placeholder: "John Doe / john@co.com / VP Engineering" },
+    ],
   },
   {
-    id: "background",
-    label: "Company & Background",
-    icon: "🏢",
-    aiEnabled: true,
-    aiPromptKey: "background",
+    id: "background", label: "Company & Background", icon: "🏢", ai: true, aiKey: "background",
+    tip: "Vendors read this section for signals. Be descriptive about context but never reveal urgency, timeline pressure, or budget — those stay in your head.",
     fields: [
-      { key: "company_profile",    label: "Company Profile",            type: "textarea", placeholder: "Brief description of your company — industry, size, geography, core business." },
-      { key: "transformation_bg",  label: "Transformation Background",  type: "textarea", placeholder: "What is driving this purchase? What problem are you solving? What does the current state look like?" },
-    ]
+      { key: "company_profile",   label: "Company Profile",           type: "ta", placeholder: "Industry, size, geography, core business." },
+      { key: "transformation_bg", label: "Transformation Background", type: "ta", placeholder: "What problem are you solving? What does the current state look like?" },
+    ],
   },
   {
-    id: "overview",
-    label: "Overview & Objectives",
-    icon: "🎯",
-    aiEnabled: true,
-    aiPromptKey: "overview",
+    id: "overview", label: "Overview & Objectives", icon: "🎯", ai: true, aiKey: "overview",
+    tip: "Vague objectives give vendors room to game their responses. Specific objectives force honest proposals.",
     fields: [
-      { key: "overview",    label: "RFP Overview",    type: "textarea", placeholder: "Summarize the overall purpose and context of this RFP in 2–4 sentences." },
-      { key: "objectives",  label: "RFP Objectives",  type: "textarea", placeholder: "List 3–5 specific outcomes this RFP process is designed to achieve." },
-    ]
+      { key: "overview",   label: "RFP Overview",   type: "ta", placeholder: "2–4 sentence summary of the purpose and context of this RFP." },
+      { key: "objectives", label: "RFP Objectives", type: "ta", placeholder: "List 3–5 specific, measurable outcomes this process is designed to achieve." },
+    ],
   },
   {
-    id: "scope",
-    label: "Scope of Work",
-    icon: "🔭",
-    aiEnabled: true,
-    aiPromptKey: "scope",
+    id: "scope", label: "Scope of Work", icon: "🔭", ai: true, aiKey: "scope",
+    tip: "The most expensive word in procurement is 'assumed.' Vendors will price scope ambiguity — and they'll price it high.",
     fields: [
-      { key: "scope", label: "Scope Definition", type: "textarea", placeholder: "Define the full scope of work and services being requested. Be explicit about what is IN scope and what is OUT of scope." },
-    ]
+      { key: "scope", label: "Scope Definition", type: "ta", placeholder: "What is IN scope and what is explicitly OUT of scope. Call out integration touchpoints, geography, user populations." },
+    ],
   },
   {
-    id: "requirements",
-    label: "Requirements",
-    icon: "✅",
-    aiEnabled: true,
-    aiPromptKey: "requirements",
-    isRequirements: true,
-    fields: []
+    id: "requirements", label: "Requirements", icon: "✅", ai: true, aiKey: "requirements", isReqs: true,
+    tip: "Binary requirements are your armor. 'Met / Not Met' leaves no room for a vendor to spin a partial capability into a yes.",
   },
   {
-    id: "questions",
-    label: "Supplier Questions",
-    icon: "❓",
-    aiEnabled: true,
-    aiPromptKey: "questions",
+    id: "questions", label: "Supplier Questions", icon: "❓", ai: true, aiKey: "questions",
+    tip: "The question that makes a vendor's team pause is worth more than ten they answer fluently.",
     fields: [
-      { key: "supplier_questions", label: "Questions for Suppliers", type: "textarea", placeholder: "Follow-up questions to clarify requirements, request case studies, references, or methodology descriptions." },
-    ]
+      { key: "supplier_questions", label: "Questions for Suppliers", type: "ta", placeholder: "Follow-up questions to reveal capability gaps vendors won't volunteer." },
+    ],
   },
   {
-    id: "evaluation",
-    label: "Evaluation Criteria",
-    icon: "⚖️",
-    isEvaluation: true,
-    fields: []
+    id: "evaluation", label: "Evaluation Criteria", icon: "⚖️", isEval: true,
+    tip: "Weights signal priority. If you list 12 equally weighted criteria, you've told vendors nothing. Force-rank intentionally.",
   },
   {
-    id: "timeline",
-    label: "Timeline",
-    icon: "📅",
-    isTimeline: true,
-    fields: []
+    id: "timeline", label: "Timeline", icon: "📅", isTL: true,
+    tip: "Give yourself more time between questions due and responses due than you think you need. Compressed timelines hurt buyers, not vendors.",
   },
   {
-    id: "response",
-    label: "Response Instructions",
-    icon: "📤",
+    id: "response", label: "Response Instructions", icon: "📤",
+    tip: "Response format requirements protect the level playing field. Every deviation is a signal — either the vendor didn't read carefully, or they're testing your enforcement.",
     fields: [
-      { key: "response_format", label: "Response Format Notes", type: "textarea", placeholder: "Any specific format requirements beyond the standard template (e.g., pricing spreadsheet format, required certifications, page limits)." },
-    ]
+      { key: "response_format", label: "Format Notes", type: "ta", placeholder: "Specific format requirements beyond the standard template." },
+    ],
   },
 ];
 
-const EVAL_CRITERIA_DEFAULT = [
-  { id: "ec1", criterion: "Proven experience delivering comparable scope and scale", weight: 20, selected: true },
-  { id: "ec2", criterion: "Implementation methodology and best practices", weight: 15, selected: true },
-  { id: "ec3", criterion: "Cost effectiveness and pricing structure", weight: 20, selected: true },
-  { id: "ec4", criterion: "Acceptance of company master agreement terms", weight: 15, selected: true },
-  { id: "ec5", criterion: "Approach to innovation and automation", weight: 10, selected: true },
-  { id: "ec6", criterion: "Talent quality and employee satisfaction indicators", weight: 10, selected: true },
-  { id: "ec7", criterion: "Sustainability and ESG practices", weight: 10, selected: false },
-  { id: "ec8", criterion: "Volume deviation handling approach", weight: 5, selected: false },
+const CATS = ["Functional", "Technical", "Security", "Integration", "Compliance", "Commercial"];
+
+const DEFAULT_EVAL = [
+  { id: "ec1", c: "Proven experience delivering comparable scope", w: 20, sel: true  },
+  { id: "ec2", c: "Implementation methodology and best practices", w: 15, sel: true  },
+  { id: "ec3", c: "Cost effectiveness and pricing structure",      w: 20, sel: true  },
+  { id: "ec4", c: "Acceptance of company master agreement terms",  w: 15, sel: true  },
+  { id: "ec5", c: "Approach to innovation and automation",         w: 10, sel: true  },
+  { id: "ec6", c: "Talent quality and employee satisfaction",      w: 10, sel: true  },
+  { id: "ec7", c: "Sustainability and ESG practices",              w:  5, sel: false },
+  { id: "ec8", c: "Volume deviation handling",                     w:  5, sel: false },
 ];
 
-const TIMELINE_DEFAULT = [
-  { id: "t1", activity: "RFP Released",                        date: "" },
-  { id: "t2", activity: "Supplier Written Questions Due",       date: "" },
-  { id: "t3", activity: "Company Responses to Questions",       date: "" },
-  { id: "t4", activity: "RFP Responses Due",                    date: "" },
-  { id: "t5", activity: "Shortlist / Demos",                    date: "" },
-  { id: "t6", activity: "Final Selection / Award Decision",     date: "" },
-  { id: "t7", activity: "Anticipated Go-Live Date",             date: "" },
+const DEFAULT_TL = [
+  { id: "t1", a: "RFP Released",                    d: "" },
+  { id: "t2", a: "Supplier Written Questions Due",   d: "" },
+  { id: "t3", a: "Company Responses to Questions",   d: "" },
+  { id: "t4", a: "RFP Responses Due",                d: "" },
+  { id: "t5", a: "Shortlist / Demos",                d: "" },
+  { id: "t6", a: "Final Selection / Award Decision", d: "" },
+  { id: "t7", a: "Anticipated Go-Live Date",         d: "" },
 ];
-
-const REQ_CATEGORIES = ["Functional", "Technical", "Security", "Integration", "Compliance", "Commercial"];
-
-// ─── AI PROMPT BUILDERS ───────────────────────────────────────────────────────
-function buildAIPrompt(key, rfpData) {
-  const context = `
-Company: ${rfpData.company || "[Not specified]"}
-RFP Title: ${rfpData.title || "[Not specified]"}
-Background: ${rfpData.transformation_bg || "[Not specified]"}
-Overview: ${rfpData.overview || "[Not specified]"}
-Scope: ${rfpData.scope || "[Not specified]"}
-`.trim();
-
-  const prompts = {
-    background: `You are an expert IT procurement consultant drafting an enterprise RFP. 
-Write a concise, professional Company Profile section (3–4 sentences) for the RFP document based on this context:
-${context}
-Do not use placeholders or brackets. Be direct and concrete. If information is missing, infer reasonably from context.
-Output only the company profile paragraph. No preamble.`,
-
-    overview: `You are an expert IT procurement consultant. 
-Write a crisp, executive-level RFP Overview (3–4 sentences) and 4–5 clear RFP Objectives (as a numbered list) based on:
-${context}
-Be specific, not generic. Each objective should be actionable and measurable.
-Format: 
-OVERVIEW:
-[paragraph]
-
-OBJECTIVES:
-1. [objective]
-2. [objective]
-...`,
-
-    scope: `You are an expert IT procurement consultant.
-Write a precise Scope of Work for this RFP. Include what is explicitly IN scope and what is OUT of scope.
-Context:
-${context}
-Be specific. Call out integration touchpoints, geography, user populations, and excluded adjacent systems if inferable.
-Output only the scope section text. No preamble.`,
-
-    requirements: `You are an expert IT procurement consultant with 20 years of enterprise software experience.
-Generate a structured set of functional and technical requirements for this RFP.
-Context:
-${context}
-
-Rules:
-- Each requirement must be binary (testable as Met / Not Met)
-- No vague or aspirational language ("should consider", "ability to")
-- Each must start with "System must..." or "Vendor must..."
-- Group by category: Functional, Technical, Security, Integration, Commercial
-- Generate 4–6 requirements per category
-- Mark each as Must-Have (M) or Should-Have (S)
-
-Output as JSON array only (no markdown, no preamble):
-[
-  {"category": "Functional", "requirement": "System must...", "priority": "M"},
-  ...
-]`,
-
-    questions: `You are an expert IT procurement consultant.
-Generate 8–10 targeted supplier questions for this RFP.
-Context:
-${context}
-
-Rules:
-- Questions should reveal capability gaps vendors won't volunteer
-- Include: implementation methodology, reference clients, data migration approach, pricing model transparency, support SLAs, roadmap visibility
-- Be direct. Avoid softball questions vendors can dodge with marketing language.
-
-Output as a numbered list. No preamble.`,
-  };
-
-  return prompts[key] || "";
-}
 
 // ─── STYLES ───────────────────────────────────────────────────────────────────
 const S = {
-  container: {
-    display: "flex",
-    height: "calc(100vh - 120px)",
-    gap: 0,
-    background: C.bg,
-    fontFamily: "'IBM Plex Sans', 'Helvetica Neue', sans-serif",
-  },
-  sidebar: {
-    width: 220,
-    minWidth: 220,
-    background: C.surface,
-    borderRight: `1px solid ${C.border}`,
-    display: "flex",
-    flexDirection: "column",
-    overflow: "hidden",
-  },
-  sidebarHeader: {
-    padding: "16px 16px 12px",
-    borderBottom: `1px solid ${C.border}`,
-  },
-  sidebarTitle: {
-    fontSize: 10,
-    fontWeight: 700,
-    letterSpacing: 2,
-    color: C.muted,
-    textTransform: "uppercase",
-    marginBottom: 4,
-  },
-  sidebarSub: {
-    fontSize: 11,
-    color: C.gold,
-    fontWeight: 600,
-  },
-  navList: {
-    flex: 1,
-    overflowY: "auto",
-    padding: "8px 0",
-  },
-  navItem: (active, complete) => ({
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    padding: "9px 16px",
-    cursor: "pointer",
+  wrap:    { display: "flex", height: "calc(100vh - 160px)", background: C.bg, fontFamily: "'Libre Baskerville', Georgia, serif", color: C.text },
+  side:    { width: 220, minWidth: 220, background: C.surface, borderRight: `1px solid ${C.border}`, display: "flex", flexDirection: "column" },
+  sideHdr: { padding: "14px 16px 10px", borderBottom: `1px solid ${C.border}` },
+  sideLbl: { fontSize: 9, fontWeight: 700, letterSpacing: 2, color: C.muted, textTransform: "uppercase", marginBottom: 3, fontFamily: "monospace" },
+  sideSub: { fontSize: 12, fontWeight: 700, color: C.gold, fontFamily: "monospace" },
+  navList: { flex: 1, overflowY: "auto", padding: "6px 0" },
+  navItem: (active, done) => ({
+    display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", cursor: "pointer",
+    borderLeft: active ? `2px solid ${C.gold}` : "2px solid transparent",
     background: active ? C.goldDim : "transparent",
-    borderLeft: active ? `3px solid ${C.gold}` : "3px solid transparent",
-    transition: "all 0.15s",
-    fontSize: 12,
-    color: active ? C.text : complete ? C.success : C.muted,
-    fontWeight: active ? 600 : 400,
+    fontSize: 12, fontFamily: "monospace",
+    color: active ? C.text : done ? C.green : C.muted,
+    fontWeight: active ? 700 : 400, transition: "all 0.12s",
   }),
-  navIcon: { fontSize: 13, width: 18, textAlign: "center" },
-  navCheck: { marginLeft: "auto", fontSize: 10, color: C.success },
-  progressBar: {
-    padding: "12px 16px",
-    borderTop: `1px solid ${C.border}`,
-  },
-  progressLabel: {
-    display: "flex",
-    justifyContent: "space-between",
-    fontSize: 10,
-    color: C.muted,
-    marginBottom: 6,
-    letterSpacing: 1,
-  },
-  progressTrack: {
-    height: 3,
-    background: C.border,
-    borderRadius: 2,
-    overflow: "hidden",
-  },
-  progressFill: (pct) => ({
-    height: "100%",
-    width: `${pct}%`,
-    background: C.gold,
-    borderRadius: 2,
-    transition: "width 0.4s ease",
+  progWrap: { padding: "10px 14px", borderTop: `1px solid ${C.border}` },
+  progRow:  { display: "flex", justifyContent: "space-between", fontSize: 9, color: C.muted, marginBottom: 5, letterSpacing: 1, fontFamily: "monospace", textTransform: "uppercase" },
+  progTrack:{ height: 3, background: C.border, borderRadius: 2, overflow: "hidden" },
+  main:    { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" },
+  topBar:  { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 20px", borderBottom: `1px solid ${C.border}`, background: C.surface, flexShrink: 0 },
+  secTitle:{ fontSize: 13, fontWeight: 700, color: C.text, display: "flex", alignItems: "center", gap: 7, fontFamily: "monospace" },
+  content: { flex: 1, overflowY: "auto", padding: "20px 24px" },
+  draftBar:{ display: "flex", alignItems: "center", gap: 8, padding: "8px 20px", borderBottom: `1px solid ${C.border}`, background: C.surface, flexShrink: 0, flexWrap: "wrap", minHeight: 44 },
+  btn: (v = "ghost") => ({
+    padding: "5px 12px", fontSize: 11, fontWeight: 700, letterSpacing: 0.5, borderRadius: 5,
+    cursor: "pointer", fontFamily: "monospace", transition: "all 0.12s",
+    border: v === "primary" ? "none" : v === "danger" ? `1px solid ${C.red}` : v === "ai" ? `1px solid ${C.goldBorder}` : `1px solid ${C.border}`,
+    background: v === "primary" ? C.gold : v === "ai" ? C.goldDim : "transparent",
+    color: v === "primary" ? "#000" : v === "danger" ? C.red : v === "ai" ? C.gold : C.muted,
+    display: "flex", alignItems: "center", gap: 5,
   }),
-  main: {
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    overflow: "hidden",
-  },
-  topBar: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "14px 24px",
-    borderBottom: `1px solid ${C.border}`,
-    background: C.surface,
-    flexShrink: 0,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: 700,
-    color: C.text,
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-  },
-  sectionIcon: { fontSize: 16 },
-  actions: { display: "flex", gap: 8, alignItems: "center" },
-  btn: (variant = "default") => ({
-    padding: "6px 14px",
-    fontSize: 11,
-    fontWeight: 600,
-    letterSpacing: 0.5,
-    borderRadius: 4,
-    border: variant === "primary" ? "none"
-          : variant === "ghost"   ? `1px solid ${C.border}`
-          : variant === "danger"  ? `1px solid ${C.danger}`
-          : variant === "ai"      ? `1px solid ${C.goldBorder}`
-          : `1px solid ${C.border}`,
-    background: variant === "primary" ? C.gold
-              : variant === "ai"      ? C.goldDim
-              : "transparent",
-    color: variant === "primary" ? "#1A1D21"
-         : variant === "danger"  ? C.danger
-         : variant === "ai"      ? C.gold
-         : C.muted,
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    gap: 5,
-    transition: "all 0.15s",
+  draftChip: (active) => ({
+    padding: "3px 11px", fontSize: 11, borderRadius: 20, cursor: "pointer", fontFamily: "monospace",
+    fontWeight: active ? 700 : 400, whiteSpace: "nowrap", transition: "all 0.12s",
+    background: active ? C.goldDim : "transparent",
+    border: `1px solid ${active ? C.goldBorder : C.border}`,
+    color: active ? C.gold : C.muted,
   }),
-  content: {
-    flex: 1,
-    overflowY: "auto",
-    padding: "24px",
-  },
-  fieldGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    display: "block",
-    fontSize: 11,
-    fontWeight: 600,
-    color: C.muted,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    marginBottom: 6,
-  },
-  input: {
-    width: "100%",
-    background: C.card,
-    border: `1px solid ${C.border}`,
-    borderRadius: 4,
-    padding: "9px 12px",
-    fontSize: 13,
-    color: C.text,
-    outline: "none",
-    boxSizing: "border-box",
-    fontFamily: "inherit",
-    transition: "border-color 0.15s",
-  },
-  textarea: {
-    width: "100%",
-    background: C.card,
-    border: `1px solid ${C.border}`,
-    borderRadius: 4,
-    padding: "10px 12px",
-    fontSize: 13,
-    color: C.text,
-    outline: "none",
-    boxSizing: "border-box",
-    fontFamily: "inherit",
-    resize: "vertical",
-    minHeight: 100,
-    lineHeight: 1.6,
-    transition: "border-color 0.15s",
-  },
-  aiBox: {
-    background: C.goldDim,
-    border: `1px solid ${C.goldBorder}`,
-    borderRadius: 6,
-    padding: "12px 14px",
-    marginBottom: 20,
-    display: "flex",
-    alignItems: "flex-start",
-    gap: 10,
-  },
-  aiIcon: { fontSize: 16, flexShrink: 0, marginTop: 1 },
-  aiText: { fontSize: 12, color: C.gold, lineHeight: 1.5 },
-  aiResult: {
-    background: C.card,
-    border: `1px solid ${C.goldBorder}`,
-    borderRadius: 6,
-    padding: 14,
-    fontSize: 13,
-    color: C.text,
-    lineHeight: 1.7,
-    marginTop: 10,
-    whiteSpace: "pre-wrap",
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-    fontSize: 12,
-  },
-  th: {
-    background: C.surface,
-    color: C.muted,
-    fontSize: 10,
-    fontWeight: 700,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    padding: "8px 10px",
-    textAlign: "left",
-    borderBottom: `1px solid ${C.border}`,
-  },
-  td: {
-    padding: "8px 10px",
-    borderBottom: `1px solid ${C.border}`,
-    verticalAlign: "middle",
-    color: C.text,
-    fontSize: 12,
-  },
-  badge: (type) => ({
-    padding: "2px 8px",
-    borderRadius: 3,
-    fontSize: 10,
-    fontWeight: 700,
-    letterSpacing: 0.5,
-    background: type === "M" ? "rgba(200,146,42,0.15)" : "rgba(74,144,217,0.15)",
-    color: type === "M" ? C.gold : C.blue,
-    border: `1px solid ${type === "M" ? C.goldBorder : "rgba(74,144,217,0.3)"}`,
-  }),
-  addBtn: {
-    display: "flex",
-    alignItems: "center",
-    gap: 6,
-    padding: "7px 12px",
-    fontSize: 11,
-    color: C.muted,
-    background: "transparent",
-    border: `1px dashed ${C.border}`,
-    borderRadius: 4,
-    cursor: "pointer",
-    marginTop: 8,
-    width: "100%",
-    justifyContent: "center",
-    transition: "all 0.15s",
-  },
-  sectionDivider: {
-    fontSize: 10,
-    fontWeight: 700,
-    letterSpacing: 2,
-    color: C.muted,
-    textTransform: "uppercase",
-    padding: "16px 0 8px",
-    borderTop: `1px solid ${C.border}`,
-    marginTop: 16,
-  },
-  coachTip: {
-    background: "rgba(93,184,138,0.08)",
-    border: `1px solid rgba(93,184,138,0.25)`,
-    borderRadius: 6,
-    padding: "10px 14px",
-    fontSize: 12,
-    color: "#5DB88A",
-    lineHeight: 1.6,
-    marginBottom: 18,
-    display: "flex",
-    gap: 8,
-  },
-  exportPanel: {
-    background: C.surface,
-    borderTop: `1px solid ${C.border}`,
-    padding: "12px 24px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    flexShrink: 0,
-  },
-  exportInfo: { fontSize: 11, color: C.muted },
-  spinner: {
-    display: "inline-block",
-    width: 12,
-    height: 12,
-    border: `2px solid ${C.goldBorder}`,
-    borderTop: `2px solid ${C.gold}`,
-    borderRadius: "50%",
-    animation: "spin 0.7s linear infinite",
-  },
+  saveStatus: (s) => ({ fontSize: 10, fontFamily: "monospace", letterSpacing: 0.5, marginLeft: "auto", color: s === "saved" ? C.green : s === "saving" ? C.gold : "transparent" }),
+  input:    { width: "100%", background: "rgba(255,255,255,0.04)", border: `1px solid ${C.border}`, borderRadius: 5, padding: "7px 11px", color: C.text, fontSize: 13, fontFamily: "inherit", outline: "none", boxSizing: "border-box", transition: "border-color 0.15s" },
+  textarea: { width: "100%", background: "rgba(255,255,255,0.04)", border: `1px solid ${C.border}`, borderRadius: 5, padding: "8px 11px", color: C.text, fontSize: 13, fontFamily: "inherit", outline: "none", boxSizing: "border-box", resize: "vertical", minHeight: 90, lineHeight: 1.6, transition: "border-color 0.15s" },
+  tip:      { background: "rgba(93,184,138,0.07)", border: `1px solid rgba(93,184,138,0.25)`, borderRadius: 6, padding: "9px 13px", fontSize: 12, color: C.green, lineHeight: 1.5, marginBottom: 16, display: "flex", gap: 8 },
+  aiBox:    { background: C.goldDim, border: `1px solid ${C.goldBorder}`, borderRadius: 6, padding: "11px 13px", marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-start" },
+  fieldGroup:{ marginBottom: 16 },
+  lbl:      { display: "block", fontSize: 9, fontWeight: 700, color: C.muted, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 5, fontFamily: "monospace" },
+  tableWrap:{ border: `1px solid ${C.border}`, borderRadius: 6, overflow: "hidden", marginBottom: 10 },
+  table:    { width: "100%", borderCollapse: "collapse", fontSize: 12 },
+  th:       { background: C.surface, color: C.muted, fontSize: 9, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", padding: "7px 10px", textAlign: "left", borderBottom: `1px solid ${C.border}`, fontFamily: "monospace" },
+  td:       { padding: "7px 10px", borderBottom: `1px solid rgba(255,255,255,0.04)`, color: C.text, fontSize: 12, verticalAlign: "middle" },
+  catHdr:   { fontSize: 9, fontWeight: 700, letterSpacing: 2, color: C.muted, textTransform: "uppercase", padding: "14px 0 6px", borderTop: `1px solid ${C.border}`, marginTop: 10, fontFamily: "monospace" },
+  addBtn:   { width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "7px", fontSize: 11, color: C.muted, background: "transparent", border: `1px dashed ${C.border}`, borderRadius: 5, cursor: "pointer", marginTop: 8, fontFamily: "monospace", transition: "all 0.12s" },
+  sel:      { background: "#1a1a20", border: `1px solid ${C.border}`, borderRadius: 4, padding: "4px 7px", color: C.text, fontSize: 11, fontFamily: "monospace", outline: "none" },
+  spinner:  { display: "inline-block", width: 11, height: 11, border: `1.5px solid rgba(200,146,42,0.3)`, borderTop: `1.5px solid ${C.gold}`, borderRadius: "50%", animation: "spin 0.7s linear infinite" },
+  empty:    { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: 280, gap: 14 },
+  emptyTxt: { fontSize: 13, color: C.muted, fontFamily: "monospace" },
 };
 
-// ─── COACHING TIPS ────────────────────────────────────────────────────────────
-const COACH_TIPS = {
-  cover:       "The POC structure is not administrative — it's a control mechanism. Every vendor touch point that bypasses the stated POC is a negotiation integrity violation. Name it explicitly.",
-  background:  "Vendors read this section for signals. Be descriptive about the transformation context but never reveal urgency, timeline pressure, or budget. Those stay in your head.",
-  overview:    "Your objectives set the evaluation framework. Vague objectives ('improve efficiency') give vendors room to game their responses. Specific objectives force honest proposals.",
-  scope:       "The most expensive word in procurement is 'assumed.' Spell out what's out of scope explicitly. Vendors will price scope ambiguity — and they'll price it high.",
-  requirements:"Binary requirements are your armor. 'Met / Not Met' leaves no room for a vendor to spin a partial capability into a yes. Every requirement that isn't binary is a negotiation liability.",
-  questions:   "Supplier questions aren't formalities — they're intelligence tools. The question that makes a vendor's team pause is worth more than ten they answer fluently.",
-  evaluation:  "Weights signal priority. If you list 12 equally weighted criteria, you've told vendors nothing. Force-rank and weight intentionally. The vendor will optimize accordingly.",
-  timeline:    "Give yourself more time between questions due and responses due than you think you need. Compressed timelines hurt buyers, not vendors. Vendors have templates. You're building from scratch.",
-  response:    "The response format requirements protect the level playing field. Every deviation from format is a signal — either the vendor didn't read carefully, or they're testing your enforcement.",
-};
+// ─── SUPABASE HELPERS ─────────────────────────────────────────────────────────
 
-// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
+async function dbLoadDrafts() {
+  const { data } = await supabase.from("rfp_drafts").select("*").order("updated_at", { ascending: false });
+  return data || [];
+}
+
+async function dbCreateDraft(title) {
+  const id = "rfp_" + Date.now();
+  await supabase.from("rfp_drafts").insert([{ id, title }]);
+  // Seed defaults
+  await supabase.from("rfp_eval_criteria").insert(
+    DEFAULT_EVAL.map((e, i) => ({ id: id + "_" + e.id, draft_id: id, criterion: e.c, weight: e.w, selected: e.sel, sort_order: i }))
+  );
+  await supabase.from("rfp_timeline").insert(
+    DEFAULT_TL.map((t, i) => ({ id: id + "_" + t.id, draft_id: id, activity: t.a, target_date: "", sort_order: i }))
+  );
+  return id;
+}
+
+async function dbDeleteDraft(id) {
+  await supabase.from("rfp_drafts").delete().eq("id", id);
+}
+
+async function dbRenameDraft(id, title) {
+  await supabase.from("rfp_drafts").update({ title, updated_at: new Date().toISOString() }).eq("id", id);
+}
+
+async function dbLoadDraft(draftId) {
+  const [{ data: fields }, { data: reqs }, { data: eval_ }, { data: tl }] = await Promise.all([
+    supabase.from("rfp_data").select("*").eq("draft_id", draftId),
+    supabase.from("rfp_requirements").select("*").eq("draft_id", draftId).order("sort_order"),
+    supabase.from("rfp_eval_criteria").select("*").eq("draft_id", draftId).order("sort_order"),
+    supabase.from("rfp_timeline").select("*").eq("draft_id", draftId).order("sort_order"),
+  ]);
+  const rfpData    = (fields || []).reduce((a, f) => ({ ...a, [f.field_key]: f.field_value }), {});
+  const requirements = (reqs  || []).map(r => ({ id: r.id, cat: r.category,  t: r.requirement,  p: r.priority }));
+  const evalCriteria = (eval_ || []).length > 0
+    ? (eval_ || []).map(e => ({ id: e.id, c: e.criterion, w: e.weight, sel: e.selected }))
+    : DEFAULT_EVAL.map(e => ({ ...e }));
+  const timeline   = (tl || []).length > 0
+    ? (tl || []).map(t => ({ id: t.id, a: t.activity, d: t.target_date || "" }))
+    : DEFAULT_TL.map(t => ({ ...t }));
+  return { rfpData, requirements, evalCriteria, timeline };
+}
+
+async function dbSaveField(draftId, key, value) {
+  await supabase.from("rfp_data").upsert(
+    { id: draftId + "_" + key, draft_id: draftId, field_key: key, field_value: value },
+    { onConflict: "draft_id,field_key" }
+  );
+  await supabase.from("rfp_drafts").update({ updated_at: new Date().toISOString() }).eq("id", draftId);
+}
+
+async function dbSaveRequirements(draftId, reqs) {
+  await supabase.from("rfp_requirements").delete().eq("draft_id", draftId);
+  if (reqs.length) {
+    await supabase.from("rfp_requirements").insert(
+      reqs.map((r, i) => ({ id: r.id, draft_id: draftId, category: r.cat, requirement: r.t, priority: r.p, sort_order: i }))
+    );
+  }
+  await supabase.from("rfp_drafts").update({ updated_at: new Date().toISOString() }).eq("id", draftId);
+}
+
+async function dbSaveEval(draftId, criteria) {
+  await supabase.from("rfp_eval_criteria").delete().eq("draft_id", draftId);
+  if (criteria.length) {
+    await supabase.from("rfp_eval_criteria").insert(
+      criteria.map((c, i) => ({ id: c.id, draft_id: draftId, criterion: c.c, weight: c.w, selected: c.sel, sort_order: i }))
+    );
+  }
+}
+
+async function dbSaveTimeline(draftId, tl) {
+  await supabase.from("rfp_timeline").delete().eq("draft_id", draftId);
+  if (tl.length) {
+    await supabase.from("rfp_timeline").insert(
+      tl.map((t, i) => ({ id: t.id, draft_id: draftId, activity: t.a, target_date: t.d, sort_order: i }))
+    );
+  }
+}
+
+// ─── ROOT COMPONENT ───────────────────────────────────────────────────────────
 export default function RFPBuilderTab() {
+  const [drafts,        setDrafts]        = useState([]);
+  const [activeDraftId, setActiveDraftId] = useState(null);
   const [activeSection, setActiveSection] = useState("cover");
-  const [rfpData, setRfpData] = useState({});
-  const [requirements, setRequirements] = useState([]);
-  const [evalCriteria, setEvalCriteria] = useState(EVAL_CRITERIA_DEFAULT);
-  const [timeline, setTimeline] = useState(TIMELINE_DEFAULT);
-  const [aiResults, setAiResults] = useState({});
-  const [aiLoading, setAiLoading] = useState({});
-  const [completedSections, setCompletedSections] = useState(new Set());
-  const [exportStatus, setExportStatus] = useState("idle"); // idle | generating | done
+  const [rfpData,       setRfpData]       = useState({});
+  const [reqs,          setReqs]          = useState([]);
+  const [evalData,      setEvalData]      = useState(DEFAULT_EVAL.map(e => ({ ...e })));
+  const [tlData,        setTlData]        = useState(DEFAULT_TL.map(t => ({ ...t })));
+  const [aiResults,     setAiResults]     = useState({});
+  const [aiLoading,     setAiLoading]     = useState({});
+  const [completed,     setCompleted]     = useState(new Set());
+  const [saveStatus,    setSaveStatus]    = useState("idle");
+  const [loading,       setLoading]       = useState(true);
+  const [renamingId,    setRenamingId]    = useState(null);
+  const [renameVal,     setRenameVal]     = useState("");
+  const [showNew,       setShowNew]       = useState(false);
+  const [newName,       setNewName]       = useState("");
 
-  // Track completion
+  // ── Boot ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    const completed = new Set();
-    RFP_SECTIONS.forEach(sec => {
-      if (sec.isRequirements) {
-        if (requirements.length >= 3) completed.add(sec.id);
-      } else if (sec.isEvaluation) {
-        if (evalCriteria.filter(c => c.selected).length >= 3) completed.add(sec.id);
-      } else if (sec.isTimeline) {
-        if (timeline.filter(t => t.date).length >= 2) completed.add(sec.id);
-      } else {
-        const allFilled = sec.fields.every(f => rfpData[f.key]?.trim());
-        if (allFilled && sec.fields.length > 0) completed.add(sec.id);
-      }
-    });
-    setCompletedSections(completed);
-  }, [rfpData, requirements, evalCriteria, timeline]);
-
-  const completionPct = Math.round((completedSections.size / RFP_SECTIONS.length) * 100);
-
-  // ── Field update ────────────────────────────────────────────────────────────
-  const updateField = useCallback((key, val) => {
-    setRfpData(d => ({ ...d, [key]: val }));
+    dbLoadDrafts().then(data => {
+      setDrafts(data);
+      if (data.length > 0) loadDraft(data[0].id);
+      else setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
-  // ── AI generation ───────────────────────────────────────────────────────────
-  const runAI = useCallback(async (promptKey, onResult) => {
-    setAiLoading(l => ({ ...l, [promptKey]: true }));
+  // ── Load draft ────────────────────────────────────────────────────────────
+  async function loadDraft(id) {
+    setLoading(true);
+    setActiveDraftId(id);
     try {
-      const prompt = buildAIPrompt(promptKey, rfpData);
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: prompt }],
-        }),
+      const { rfpData: d, requirements, evalCriteria, timeline } = await dbLoadDraft(id);
+      setRfpData(d);
+      setReqs(requirements);
+      setEvalData(evalCriteria);
+      setTlData(timeline);
+      setAiResults({});
+    } catch(e) { console.warn("load error", e); }
+    setLoading(false);
+  }
+
+  // ── Completion tracking ───────────────────────────────────────────────────
+  useEffect(() => {
+    const done = new Set();
+    RFP_SECTIONS.forEach(s => {
+      if      (s.isReqs) { if (reqs.length >= 3) done.add(s.id); }
+      else if (s.isEval) { if (evalData.filter(c => c.sel).length >= 3) done.add(s.id); }
+      else if (s.isTL)   { if (tlData.filter(t => t.d).length >= 2) done.add(s.id); }
+      else               { if (s.fields?.every(f => rfpData[f.key]?.trim())) done.add(s.id); }
+    });
+    setCompleted(done);
+  }, [rfpData, reqs, evalData, tlData]);
+
+  const pct = Math.round((completed.size / RFP_SECTIONS.length) * 100);
+
+  // ── Save wrapper ──────────────────────────────────────────────────────────
+  const saving = useCallback(async (fn) => {
+    if (!activeDraftId) return;
+    setSaveStatus("saving");
+    try { await fn(); setSaveStatus("saved"); }
+    catch(e) { console.warn("save error", e); setSaveStatus("idle"); }
+    setTimeout(() => setSaveStatus("idle"), 2000);
+  }, [activeDraftId]);
+
+  // ── Field handlers ────────────────────────────────────────────────────────
+  const onFieldChange = useCallback((key, val) => setRfpData(d => ({ ...d, [key]: val })), []);
+  const onFieldBlur   = useCallback((key, val) => { if (activeDraftId) saving(() => dbSaveField(activeDraftId, key, val)); }, [activeDraftId, saving]);
+
+  // ── Structured data updaters ──────────────────────────────────────────────
+  const updateReqs = useCallback((updater) => {
+    setReqs(prev => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      saving(() => dbSaveRequirements(activeDraftId, next));
+      return next;
+    });
+  }, [activeDraftId, saving]);
+
+  const updateEval = useCallback((updater) => {
+    setEvalData(prev => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      saving(() => dbSaveEval(activeDraftId, next));
+      return next;
+    });
+  }, [activeDraftId, saving]);
+
+  const updateTL = useCallback((updater) => {
+    setTlData(prev => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      saving(() => dbSaveTimeline(activeDraftId, next));
+      return next;
+    });
+  }, [activeDraftId, saving]);
+
+  // ── AI ────────────────────────────────────────────────────────────────────
+  const runAI = useCallback(async (sec) => {
+    if (aiLoading[sec.aiKey]) return;
+    setAiLoading(l => ({ ...l, [sec.aiKey]: true }));
+    const ctx = `Company: ${rfpData.company||"[Not specified]"}\nRFP Title: ${rfpData.title||"[Not specified]"}\nBackground: ${rfpData.transformation_bg||"[Not specified]"}\nScope: ${rfpData.scope||"[Not specified]"}`;
+    const prompts = {
+      background:   `You are an expert IT procurement consultant. Write a concise Company Profile (3-4 sentences) for an enterprise RFP.\nContext:\n${ctx}\nOutput only the text, no preamble.`,
+      overview:     `You are an expert IT procurement consultant. Write a crisp RFP Overview (3-4 sentences) and 4-5 clear RFP Objectives (numbered list).\nContext:\n${ctx}\nFormat:\nOVERVIEW:\n[paragraph]\n\nOBJECTIVES:\n1. ...`,
+      scope:        `You are an expert IT procurement consultant. Write a precise Scope of Work with explicit IN scope and OUT of scope sections.\nContext:\n${ctx}\nOutput only the scope text.`,
+      requirements: `You are an expert IT procurement consultant. Generate structured requirements.\nContext:\n${ctx}\nRules: Binary (Met/Not Met), starts with "System must..." or "Vendor must...", grouped by Functional/Technical/Security/Integration/Commercial, 3-4 per category, mark M (Must-Have) or S (Should-Have).\nOutput as JSON array only (no markdown):\n[{"category":"Functional","requirement":"System must...","priority":"M"}]`,
+      questions:    `You are an expert IT procurement consultant. Generate 8-10 targeted supplier questions that reveal capability gaps.\nContext:\n${ctx}\nOutput as a numbered list only.`,
+    };
+    try {
+      const res  = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, messages: [{ role: "user", content: prompts[sec.aiKey] }] }),
       });
       const data = await res.json();
       const text = data.content?.map(b => b.text || "").join("") || "";
-      onResult(text);
-      setAiResults(r => ({ ...r, [promptKey]: text }));
-    } catch (e) {
-      setAiResults(r => ({ ...r, [promptKey]: "AI generation failed. Please try again." }));
-    } finally {
-      setAiLoading(l => ({ ...l, [promptKey]: false }));
-    }
-  }, [rfpData]);
 
-  const generateRequirements = useCallback(async () => {
-    await runAI("requirements", (text) => {
-      try {
-        const cleaned = text.replace(/```json|```/g, "").trim();
-        const parsed = JSON.parse(cleaned);
-        const newReqs = parsed.map((r, i) => ({
-          id: `req_${Date.now()}_${i}`,
-          category: r.category || "Functional",
-          requirement: r.requirement || "",
-          priority: r.priority || "M",
-          aiGenerated: true,
-        }));
-        setRequirements(prev => [...prev, ...newReqs]);
-      } catch {
-        // fallback: parse as text lines
-        const lines = text.split("\n").filter(l => l.trim().startsWith("System") || l.trim().startsWith("Vendor"));
-        setRequirements(prev => [...prev, ...lines.map((l, i) => ({
-          id: `req_txt_${Date.now()}_${i}`,
-          category: "Functional",
-          requirement: l.trim(),
-          priority: "M",
-          aiGenerated: true,
-        }))]);
+      if (sec.aiKey === "requirements") {
+        try {
+          const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+          updateReqs(prev => [...prev, ...parsed.map((r, i) => ({ id: "r" + Date.now() + i, cat: r.category || "Functional", t: r.requirement || "", p: r.priority || "M" }))]);
+        } catch {
+          const lines = text.split("\n").filter(l => l.trim().match(/^(System|Vendor) must/i));
+          updateReqs(prev => [...prev, ...lines.map((l, i) => ({ id: "r" + Date.now() + i, cat: "Functional", t: l.trim(), p: "M" }))]);
+        }
+      } else {
+        if (sec.aiKey === "overview") {
+          const om = text.match(/OVERVIEW:\s*([\s\S]*?)\s*OBJECTIVES:/i);
+          const obm = text.match(/OBJECTIVES:\s*([\s\S]*)/i);
+          if (om)  { onFieldChange("overview",   om[1].trim());  onFieldBlur("overview",   om[1].trim()); }
+          if (obm) { onFieldChange("objectives", obm[1].trim()); onFieldBlur("objectives", obm[1].trim()); }
+        } else if (sec.aiKey === "background") {
+          onFieldChange("company_profile", text.trim()); onFieldBlur("company_profile", text.trim());
+        } else if (sec.aiKey === "scope") {
+          onFieldChange("scope", text.trim()); onFieldBlur("scope", text.trim());
+        } else if (sec.aiKey === "questions") {
+          onFieldChange("supplier_questions", text.trim()); onFieldBlur("supplier_questions", text.trim());
+        }
+        setAiResults(r => ({ ...r, [sec.aiKey]: text }));
       }
-    });
-  }, [runAI]);
+    } catch(e) { console.warn("AI error", e); }
+    setAiLoading(l => ({ ...l, [sec.aiKey]: false }));
+  }, [rfpData, aiLoading, onFieldChange, onFieldBlur, updateReqs]);
 
-  // ── Requirements CRUD ───────────────────────────────────────────────────────
-  const addRequirement = () => {
-    setRequirements(prev => [...prev, {
-      id: `req_${Date.now()}`,
-      category: "Functional",
-      requirement: "",
-      priority: "M",
-      aiGenerated: false,
-    }]);
-  };
-  const updateReq = (id, field, val) => {
-    setRequirements(prev => prev.map(r => r.id === id ? { ...r, [field]: val } : r));
-  };
-  const deleteReq = (id) => {
-    setRequirements(prev => prev.filter(r => r.id !== id));
-  };
+  // ── Draft management ──────────────────────────────────────────────────────
+  async function handleCreate() {
+    const title = newName.trim() || "Untitled RFP";
+    const id = await dbCreateDraft(title);
+    const updated = await dbLoadDrafts();
+    setDrafts(updated);
+    setNewName(""); setShowNew(false);
+    loadDraft(id);
+  }
 
-  // ── Eval criteria ────────────────────────────────────────────────────────────
-  const toggleEval = (id) => setEvalCriteria(prev => prev.map(c => c.id === id ? { ...c, selected: !c.selected } : c));
-  const updateEvalWeight = (id, w) => setEvalCriteria(prev => prev.map(c => c.id === id ? { ...c, weight: parseInt(w) || 0 } : c));
-  const addEvalCriterion = () => setEvalCriteria(prev => [...prev, { id: `ec_${Date.now()}`, criterion: "", weight: 10, selected: true }]);
+  async function handleDelete(id) {
+    if (!window.confirm("Delete this RFP draft? This cannot be undone.")) return;
+    await dbDeleteDraft(id);
+    const updated = await dbLoadDrafts();
+    setDrafts(updated);
+    if (updated.length > 0) loadDraft(updated[0].id);
+    else { setActiveDraftId(null); setRfpData({}); setReqs([]); setLoading(false); }
+  }
 
-  // ── Timeline ─────────────────────────────────────────────────────────────────
-  const updateTimeline = (id, val) => setTimeline(prev => prev.map(t => t.id === id ? { ...t, date: val } : t));
-  const addTimelineRow = () => setTimeline(prev => [...prev, { id: `t_${Date.now()}`, activity: "", date: "" }]);
+  async function handleRename(id) {
+    if (!renameVal.trim()) { setRenamingId(null); return; }
+    await dbRenameDraft(id, renameVal.trim());
+    setDrafts(prev => prev.map(d => d.id === id ? { ...d, title: renameVal.trim() } : d));
+    setRenamingId(null);
+  }
 
-  // ── Export (generate summary JSON for download) ──────────────────────────────
-  const handleExport = () => {
-    setExportStatus("generating");
-    setTimeout(() => {
-      const rfpDoc = {
-        meta: rfpData,
-        requirements,
-        evalCriteria: evalCriteria.filter(c => c.selected),
-        timeline,
-        aiContent: aiResults,
-        exportedAt: new Date().toISOString(),
-      };
-      const blob = new Blob([JSON.stringify(rfpDoc, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `RFP_${(rfpData.title || "draft").replace(/\s+/g, "_")}_${Date.now()}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      setExportStatus("done");
-      setTimeout(() => setExportStatus("idle"), 2000);
-    }, 500);
-  };
+  // ── Render ────────────────────────────────────────────────────────────────
+  const sec = RFP_SECTIONS.find(s => s.id === activeSection);
 
-  // ── Section renderer ─────────────────────────────────────────────────────────
-  const currentSection = RFP_SECTIONS.find(s => s.id === activeSection);
-  const tip = COACH_TIPS[activeSection];
+  return (
+    <div style={{ fontFamily: "'Libre Baskerville', Georgia, serif", color: C.text, background: C.bg }}>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 
-  const renderContent = () => {
-    if (!currentSection) return null;
+      {/* Draft bar */}
+      <div style={S.draftBar}>
+        <span style={{ fontSize: 9, color: C.muted, fontFamily: "monospace", letterSpacing: 1.5, textTransform: "uppercase", marginRight: 2, flexShrink: 0 }}>Drafts:</span>
 
-    return (
-      <div>
-        {/* Coaching tip */}
-        {tip && (
-          <div style={S.coachTip}>
-            <span style={{ fontSize: 14, flexShrink: 0 }}>💡</span>
-            <div><strong style={{ fontWeight: 700 }}>Acuity Take: </strong>{tip}</div>
-          </div>
-        )}
-
-        {/* AI generation box */}
-        {currentSection.aiEnabled && (
-          <div style={S.aiBox}>
-            <span style={S.aiIcon}>🤖</span>
-            <div style={{ flex: 1 }}>
-              <div style={S.aiText}>
-                <strong>AI Assistant</strong> — Generate a draft for this section based on what you've filled in so far. You can edit the output directly below.
+        {drafts.map(d => (
+          <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 3 }}>
+            {renamingId === d.id ? (
+              <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                <input value={renameVal} onChange={e => setRenameVal(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") handleRename(d.id); if (e.key === "Escape") setRenamingId(null); }}
+                  style={{ ...S.input, width: 150, fontSize: 11, padding: "3px 8px" }} autoFocus />
+                <button style={S.btn("primary")} onClick={() => handleRename(d.id)}>Save</button>
+                <button style={S.btn()} onClick={() => setRenamingId(null)}>✕</button>
               </div>
-              <button
-                style={{ ...S.btn("ai"), marginTop: 8 }}
-                onClick={() => {
-                  if (currentSection.isRequirements) {
-                    generateRequirements();
-                  } else {
-                    runAI(currentSection.aiPromptKey, (text) => {
-                      // Auto-populate fields from AI output
-                      if (currentSection.id === "overview") {
-                        const overviewMatch = text.match(/OVERVIEW:\s*([\s\S]*?)\s*OBJECTIVES:/i);
-                        const objectivesMatch = text.match(/OBJECTIVES:\s*([\s\S]*)/i);
-                        if (overviewMatch) updateField("overview", overviewMatch[1].trim());
-                        if (objectivesMatch) updateField("objectives", objectivesMatch[1].trim());
-                      } else if (currentSection.id === "background") {
-                        updateField("company_profile", text.trim());
-                      } else if (currentSection.id === "scope") {
-                        updateField("scope", text.trim());
-                      } else if (currentSection.id === "questions") {
-                        updateField("supplier_questions", text.trim());
-                      }
-                    });
-                  }
-                }}
-                disabled={aiLoading[currentSection.aiPromptKey] || aiLoading["requirements"]}
-              >
-                {(aiLoading[currentSection.aiPromptKey] || aiLoading["requirements"])
-                  ? <><span style={S.spinner} /><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style> Generating…</>
-                  : <><span>✨</span> Generate Draft</>
-                }
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Standard fields */}
-        {currentSection.fields.map(field => (
-          <div key={field.key} style={S.fieldGroup}>
-            <label style={S.label}>{field.label}</label>
-            {field.type === "textarea" ? (
-              <textarea
-                style={S.textarea}
-                placeholder={field.placeholder}
-                value={rfpData[field.key] || ""}
-                onChange={e => updateField(field.key, e.target.value)}
-                rows={5}
-                onFocus={e => e.target.style.borderColor = C.gold}
-                onBlur={e => e.target.style.borderColor = C.border}
-              />
             ) : (
-              <input
-                style={S.input}
-                type="text"
-                placeholder={field.placeholder}
-                value={rfpData[field.key] || ""}
-                onChange={e => updateField(field.key, e.target.value)}
-                onFocus={e => e.target.style.borderColor = C.gold}
-                onBlur={e => e.target.style.borderColor = C.border}
-              />
+              <>
+                <span style={S.draftChip(activeDraftId === d.id)} onClick={() => loadDraft(d.id)}>{d.title}</span>
+                {activeDraftId === d.id && (
+                  <>
+                    <button title="Rename" onClick={() => { setRenamingId(d.id); setRenameVal(d.title); }}
+                      style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontSize: 11, padding: "1px 3px" }}>✎</button>
+                    <button title="Delete" onClick={() => handleDelete(d.id)}
+                      style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontSize: 11, padding: "1px 3px" }}>✕</button>
+                  </>
+                )}
+              </>
             )}
           </div>
         ))}
 
-        {/* Requirements section */}
-        {currentSection.isRequirements && (
-          <RequirementsSection
-            requirements={requirements}
-            onAdd={addRequirement}
-            onUpdate={updateReq}
-            onDelete={deleteReq}
-            aiLoading={aiLoading["requirements"]}
-          />
+        {showNew ? (
+          <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+            <input value={newName} onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") handleCreate(); if (e.key === "Escape") setShowNew(false); }}
+              placeholder="Draft name…"
+              style={{ ...S.input, width: 150, fontSize: 11, padding: "3px 8px" }} autoFocus />
+            <button style={S.btn("primary")} onClick={handleCreate}>Create</button>
+            <button style={S.btn()} onClick={() => setShowNew(false)}>✕</button>
+          </div>
+        ) : (
+          <button style={S.btn()} onClick={() => setShowNew(true)}>+ New draft</button>
         )}
 
-        {/* Evaluation criteria section */}
-        {currentSection.isEvaluation && (
-          <EvaluationSection
-            criteria={evalCriteria}
-            onToggle={toggleEval}
-            onUpdateWeight={updateEvalWeight}
-            onAdd={addEvalCriterion}
-            onUpdate={(id, val) => setEvalCriteria(prev => prev.map(c => c.id === id ? { ...c, criterion: val } : c))}
-          />
-        )}
-
-        {/* Timeline section */}
-        {currentSection.isTimeline && (
-          <TimelineSection
-            timeline={timeline}
-            onUpdate={updateTimeline}
-            onAdd={addTimelineRow}
-            onUpdateActivity={(id, val) => setTimeline(prev => prev.map(t => t.id === id ? { ...t, activity: val } : t))}
-          />
-        )}
+        <span style={S.saveStatus(saveStatus)}>
+          {saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "✓ Saved" : "·"}
+        </span>
       </div>
-    );
-  };
 
-  return (
-    <div style={S.container}>
-      {/* Sidebar */}
-      <div style={S.sidebar}>
-        <div style={S.sidebarHeader}>
-          <div style={S.sidebarTitle}>Procurement OS</div>
-          <div style={S.sidebarSub}>RFP Builder</div>
+      {/* Loading */}
+      {loading && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 280, gap: 10, color: C.muted, fontFamily: "monospace", fontSize: 12 }}>
+          <span style={S.spinner} /> Loading…
         </div>
-        <div style={S.navList}>
-          {RFP_SECTIONS.map(sec => (
-            <div
-              key={sec.id}
-              style={S.navItem(activeSection === sec.id, completedSections.has(sec.id))}
-              onClick={() => setActiveSection(sec.id)}
-            >
-              <span style={S.navIcon}>{sec.icon}</span>
-              <span>{sec.label}</span>
-              {completedSections.has(sec.id) && (
-                <span style={S.navCheck}>✓</span>
+      )}
+
+      {/* No drafts */}
+      {!loading && !activeDraftId && (
+        <div style={S.empty}>
+          <div style={S.emptyTxt}>No RFP drafts yet.</div>
+          <button style={S.btn("primary")} onClick={() => setShowNew(true)}>+ Create your first RFP draft</button>
+        </div>
+      )}
+
+      {/* Main layout */}
+      {!loading && activeDraftId && (
+        <div style={S.wrap}>
+
+          {/* Sidebar nav */}
+          <div style={S.side}>
+            <div style={S.sideHdr}>
+              <div style={S.sideLbl}>Procurement OS</div>
+              <div style={S.sideSub}>RFP Builder</div>
+            </div>
+            <div style={S.navList}>
+              {RFP_SECTIONS.map(s => (
+                <div key={s.id} style={S.navItem(activeSection === s.id, completed.has(s.id))} onClick={() => setActiveSection(s.id)}>
+                  <span style={{ width: 16, textAlign: "center", fontSize: 12, flexShrink: 0 }}>{s.icon}</span>
+                  <span style={{ flex: 1 }}>{s.label}</span>
+                  {completed.has(s.id) && <span style={{ fontSize: 10, color: C.green }}>✓</span>}
+                </div>
+              ))}
+            </div>
+            <div style={S.progWrap}>
+              <div style={S.progRow}>
+                <span>Completion</span>
+                <span style={{ color: pct === 100 ? C.green : C.gold }}>{pct}%</span>
+              </div>
+              <div style={S.progTrack}>
+                <div style={{ height: "100%", width: `${pct}%`, background: C.gold, borderRadius: 2, transition: "width 0.4s" }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div style={S.main}>
+            <div style={S.topBar}>
+              <div style={S.secTitle}><span>{sec?.icon}</span>{sec?.label}</div>
+              <span style={{ fontSize: 11, color: C.muted, fontFamily: "monospace" }}>
+                {reqs.length} req · {evalData.filter(c => c.sel).length} criteria
+              </span>
+            </div>
+            <div style={S.content}>
+              {sec && (
+                <SectionContent
+                  sec={sec} rfpData={rfpData} reqs={reqs} evalData={evalData} tlData={tlData}
+                  aiLoading={aiLoading} onFieldChange={onFieldChange} onFieldBlur={onFieldBlur}
+                  onRunAI={runAI} onUpdateReqs={updateReqs} onUpdateEval={updateEval} onUpdateTL={updateTL}
+                />
               )}
             </div>
-          ))}
-        </div>
-        <div style={S.progressBar}>
-          <div style={S.progressLabel}>
-            <span>COMPLETION</span>
-            <span style={{ color: completionPct === 100 ? C.success : C.gold }}>{completionPct}%</span>
-          </div>
-          <div style={S.progressTrack}>
-            <div style={S.progressFill(completionPct)} />
           </div>
         </div>
-      </div>
-
-      {/* Main panel */}
-      <div style={S.main}>
-        <div style={S.topBar}>
-          <div style={S.sectionTitle}>
-            <span style={S.sectionIcon}>{currentSection?.icon}</span>
-            {currentSection?.label}
-          </div>
-          <div style={S.actions}>
-            <span style={{ fontSize: 11, color: C.muted, marginRight: 4 }}>
-              {requirements.length} req · {evalCriteria.filter(c=>c.selected).length} criteria
-            </span>
-            <button style={S.btn("primary")} onClick={handleExport}>
-              {exportStatus === "generating" ? "Generating…"
-               : exportStatus === "done" ? "✓ Exported"
-               : "⬇ Export RFP"}
-            </button>
-          </div>
-        </div>
-
-        <div style={S.content}>
-          {renderContent()}
-        </div>
-      </div>
+      )}
     </div>
   );
 }
 
-// ─── SUB-COMPONENTS ────────────────────────────────────────────────────────────
-
-function RequirementsSection({ requirements, onAdd, onUpdate, onDelete, aiLoading }) {
-  const categories = REQ_CATEGORIES;
-  const byCategory = categories.map(cat => ({
-    cat,
-    reqs: requirements.filter(r => r.category === cat),
-  })).filter(g => g.reqs.length > 0);
-
+// ─── SECTION CONTENT ─────────────────────────────────────────────────────────
+function SectionContent({ sec, rfpData, reqs, evalData, tlData, aiLoading, onFieldChange, onFieldBlur, onRunAI, onUpdateReqs, onUpdateEval, onUpdateTL }) {
   return (
     <div>
-      {byCategory.map(group => (
-        <div key={group.cat} style={{ marginBottom: 24 }}>
-          <div style={S.sectionDivider}>{group.cat}</div>
-          <table style={S.table}>
-            <thead>
-              <tr>
-                <th style={{ ...S.th, width: 60 }}>Priority</th>
-                <th style={S.th}>Requirement</th>
-                <th style={{ ...S.th, width: 110 }}>Category</th>
-                <th style={{ ...S.th, width: 40 }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {group.reqs.map(req => (
-                <tr key={req.id} style={{ background: req.aiGenerated ? "rgba(200,146,42,0.03)" : "transparent" }}>
-                  <td style={S.td}>
-                    <select
-                      value={req.priority}
-                      onChange={e => onUpdate(req.id, "priority", e.target.value)}
-                      style={{ background: C.card, border: `1px solid ${C.border}`, color: C.text, fontSize: 11, borderRadius: 3, padding: "2px 4px" }}
-                    >
-                      <option value="M">Must</option>
-                      <option value="S">Should</option>
-                      <option value="C">Could</option>
-                    </select>
-                  </td>
-                  <td style={S.td}>
-                    <input
-                      style={{ ...S.input, fontSize: 12, padding: "5px 8px" }}
-                      value={req.requirement}
-                      onChange={e => onUpdate(req.id, "requirement", e.target.value)}
-                      placeholder="System must..."
-                    />
-                  </td>
-                  <td style={S.td}>
-                    <select
-                      value={req.category}
-                      onChange={e => onUpdate(req.id, "category", e.target.value)}
-                      style={{ background: C.card, border: `1px solid ${C.border}`, color: C.text, fontSize: 11, borderRadius: 3, padding: "2px 4px", width: "100%" }}
-                    >
-                      {REQ_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </td>
-                  <td style={S.td}>
-                    <button
-                      onClick={() => onDelete(req.id)}
-                      style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 13, padding: "2px 4px" }}
-                    >✕</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {sec.tip && (
+        <div style={S.tip}>
+          <span style={{ fontSize: 14, flexShrink: 0 }}>💡</span>
+          <div><strong>Acuity Take: </strong>{sec.tip}</div>
+        </div>
+      )}
+      {sec.ai && (
+        <div style={S.aiBox}>
+          <span style={{ fontSize: 15, flexShrink: 0 }}>🤖</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12, color: C.gold, lineHeight: 1.5 }}>
+              <strong>AI Assistant</strong> — Generate a draft for this section from what you've entered so far.
+            </div>
+            <button style={{ ...S.btn("ai"), marginTop: 8 }} onClick={() => onRunAI(sec)} disabled={aiLoading[sec.aiKey]}>
+              {aiLoading[sec.aiKey] ? <><span style={S.spinner} /> Generating…</> : <>✨ Generate Draft</>}
+            </button>
+          </div>
+        </div>
+      )}
+      {sec.fields?.map(f => (
+        <div key={f.key} style={S.fieldGroup}>
+          <label style={S.lbl}>{f.label}</label>
+          {f.type === "ta"
+            ? <textarea style={S.textarea} placeholder={f.placeholder} value={rfpData[f.key] || ""}
+                onChange={e => onFieldChange(f.key, e.target.value)}
+                onBlur={e => onFieldBlur(f.key, e.target.value)} rows={5} />
+            : <input style={S.input} type="text" placeholder={f.placeholder} value={rfpData[f.key] || ""}
+                onChange={e => onFieldChange(f.key, e.target.value)}
+                onBlur={e => onFieldBlur(f.key, e.target.value)} />
+          }
         </div>
       ))}
+      {sec.isReqs && <RequirementsSection reqs={reqs} onUpdate={onUpdateReqs} aiLoading={aiLoading["requirements"]} />}
+      {sec.isEval && <EvaluationSection evalData={evalData} onUpdate={onUpdateEval} />}
+      {sec.isTL   && <TimelineSection   tlData={tlData}   onUpdate={onUpdateTL} />}
+    </div>
+  );
+}
 
-      {requirements.length === 0 && !aiLoading && (
-        <div style={{ textAlign: "center", padding: "32px 0", color: C.muted, fontSize: 13 }}>
-          No requirements yet. Use AI to generate a draft set, or add manually.
+// ─── REQUIREMENTS ─────────────────────────────────────────────────────────────
+function RequirementsSection({ reqs, onUpdate, aiLoading }) {
+  const byCat = CATS.map(c => ({ c, r: reqs.filter(r => r.cat === c) })).filter(g => g.r.length > 0);
+  return (
+    <div>
+      {reqs.length === 0 && !aiLoading && (
+        <div style={{ textAlign: "center", padding: "28px 0", color: C.muted, fontSize: 12, fontFamily: "monospace" }}>
+          No requirements yet. Use AI to generate a draft set, or add manually below.
         </div>
       )}
-
       {aiLoading && (
-        <div style={{ textAlign: "center", padding: "24px 0", color: C.gold, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-          <span style={{ display: "inline-block", width: 14, height: 14, border: `2px solid rgba(200,146,42,0.3)`, borderTop: `2px solid ${C.gold}`, borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
-          Generating requirements…
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "20px 0", gap: 8, color: C.gold, fontSize: 12, fontFamily: "monospace" }}>
+          <span style={S.spinner} /> Generating requirements…
         </div>
       )}
-
-      <button style={S.addBtn} onClick={onAdd}>
+      {byCat.map(group => (
+        <div key={group.c}>
+          <div style={S.catHdr}>{group.c}</div>
+          <div style={S.tableWrap}>
+            <table style={S.table}>
+              <thead>
+                <tr>
+                  <th style={{ ...S.th, width: 70 }}>Priority</th>
+                  <th style={S.th}>Requirement</th>
+                  <th style={{ ...S.th, width: 110 }}>Category</th>
+                  <th style={{ ...S.th, width: 36 }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {group.r.map(req => (
+                  <tr key={req.id}>
+                    <td style={S.td}>
+                      <select style={S.sel} value={req.p}
+                        onChange={e => onUpdate(p => p.map(r => r.id === req.id ? { ...r, p: e.target.value } : r))}>
+                        <option value="M">Must</option>
+                        <option value="S">Should</option>
+                        <option value="C">Could</option>
+                      </select>
+                    </td>
+                    <td style={S.td}>
+                      <input style={{ ...S.input, fontSize: 12, padding: "5px 8px" }} value={req.t}
+                        onChange={e => onUpdate(p => p.map(r => r.id === req.id ? { ...r, t: e.target.value } : r))}
+                        placeholder="System must…" />
+                    </td>
+                    <td style={S.td}>
+                      <select style={{ ...S.sel, width: "100%" }} value={req.cat}
+                        onChange={e => onUpdate(p => p.map(r => r.id === req.id ? { ...r, cat: e.target.value } : r))}>
+                        {CATS.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </td>
+                    <td style={S.td}>
+                      <button onClick={() => onUpdate(p => p.filter(r => r.id !== req.id))}
+                        style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontSize: 13 }}>✕</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+      <button style={S.addBtn} onClick={() => onUpdate(p => [...p, { id: "r" + Date.now(), cat: "Functional", t: "", p: "M" }])}>
         + Add Requirement
       </button>
     </div>
   );
 }
 
-function EvaluationSection({ criteria, onToggle, onUpdateWeight, onAdd, onUpdate }) {
-  const selectedWeight = criteria.filter(c => c.selected).reduce((sum, c) => sum + (c.weight || 0), 0);
-
+// ─── EVALUATION ───────────────────────────────────────────────────────────────
+function EvaluationSection({ evalData, onUpdate }) {
+  const total = evalData.filter(c => c.sel).reduce((s, c) => s + (c.w || 0), 0);
   return (
     <div>
-      <div style={{ ...S.coachTip, marginBottom: 16 }}>
+      <div style={{ ...S.tip, marginBottom: 14 }}>
         <span style={{ fontSize: 14, flexShrink: 0 }}>⚖️</span>
         <div>
-          Selected criteria weights total: <strong style={{ color: selectedWeight === 100 ? C.success : C.warn }}>{selectedWeight}%</strong>
-          {selectedWeight !== 100 && <span style={{ color: C.muted }}> — adjust weights to total 100%</span>}
+          Selected weights total: <strong style={{ color: total === 100 ? C.green : C.gold }}>{total}%</strong>
+          {total !== 100 && <span style={{ color: C.muted }}> — adjust to total 100%</span>}
         </div>
       </div>
-      <table style={S.table}>
-        <thead>
-          <tr>
-            <th style={{ ...S.th, width: 40 }}>Use</th>
-            <th style={S.th}>Criterion</th>
-            <th style={{ ...S.th, width: 80 }}>Weight %</th>
-          </tr>
-        </thead>
-        <tbody>
-          {criteria.map(c => (
-            <tr key={c.id} style={{ opacity: c.selected ? 1 : 0.45 }}>
-              <td style={S.td}>
-                <input
-                  type="checkbox"
-                  checked={c.selected}
-                  onChange={() => onToggle(c.id)}
-                  style={{ accentColor: C.gold, cursor: "pointer" }}
-                />
-              </td>
-              <td style={S.td}>
-                <input
-                  style={{ ...S.input, fontSize: 12, padding: "5px 8px" }}
-                  value={c.criterion}
-                  onChange={e => onUpdate(c.id, e.target.value)}
-                />
-              </td>
-              <td style={S.td}>
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={c.weight}
-                  onChange={e => onUpdateWeight(c.id, e.target.value)}
-                  style={{ ...S.input, fontSize: 12, padding: "5px 8px", width: 60 }}
-                />
-              </td>
+      <div style={S.tableWrap}>
+        <table style={S.table}>
+          <thead>
+            <tr>
+              <th style={{ ...S.th, width: 36 }}>Use</th>
+              <th style={S.th}>Criterion</th>
+              <th style={{ ...S.th, width: 80 }}>Weight %</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-      <button style={S.addBtn} onClick={onAdd}>+ Add Criterion</button>
+          </thead>
+          <tbody>
+            {evalData.map(c => (
+              <tr key={c.id} style={{ opacity: c.sel ? 1 : 0.4 }}>
+                <td style={S.td}>
+                  <input type="checkbox" checked={c.sel}
+                    onChange={() => onUpdate(p => p.map(x => x.id === c.id ? { ...x, sel: !x.sel } : x))}
+                    style={{ accentColor: C.gold, cursor: "pointer" }} />
+                </td>
+                <td style={S.td}>
+                  <input style={{ ...S.input, fontSize: 12, padding: "5px 8px" }} value={c.c}
+                    onChange={e => onUpdate(p => p.map(x => x.id === c.id ? { ...x, c: e.target.value } : x))} />
+                </td>
+                <td style={S.td}>
+                  <input type="number" min={0} max={100} value={c.w}
+                    onChange={e => onUpdate(p => p.map(x => x.id === c.id ? { ...x, w: parseInt(e.target.value) || 0 } : x))}
+                    style={{ ...S.input, fontSize: 12, padding: "5px 8px", width: 60 }} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <button style={S.addBtn} onClick={() => onUpdate(p => [...p, { id: "ec" + Date.now(), c: "", w: 10, sel: true }])}>
+        + Add Criterion
+      </button>
     </div>
   );
 }
 
-function TimelineSection({ timeline, onUpdate, onAdd, onUpdateActivity }) {
+// ─── TIMELINE ─────────────────────────────────────────────────────────────────
+function TimelineSection({ tlData, onUpdate }) {
   return (
     <div>
-      <table style={S.table}>
-        <thead>
-          <tr>
-            <th style={S.th}>Activity</th>
-            <th style={{ ...S.th, width: 160 }}>Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          {timeline.map(t => (
-            <tr key={t.id}>
-              <td style={S.td}>
-                <input
-                  style={{ ...S.input, fontSize: 12, padding: "5px 8px" }}
-                  value={t.activity}
-                  onChange={e => onUpdateActivity(t.id, e.target.value)}
-                />
-              </td>
-              <td style={S.td}>
-                <input
-                  type="text"
-                  placeholder="e.g. April 14, 2025"
-                  style={{ ...S.input, fontSize: 12, padding: "5px 8px" }}
-                  value={t.date}
-                  onChange={e => onUpdate(t.id, e.target.value)}
-                />
-              </td>
+      <div style={S.tableWrap}>
+        <table style={S.table}>
+          <thead>
+            <tr>
+              <th style={S.th}>Activity</th>
+              <th style={{ ...S.th, width: 170 }}>Target Date</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-      <button style={S.addBtn} onClick={onAdd}>+ Add Milestone</button>
+          </thead>
+          <tbody>
+            {tlData.map(t => (
+              <tr key={t.id}>
+                <td style={S.td}>
+                  <input style={{ ...S.input, fontSize: 12, padding: "5px 8px" }} value={t.a}
+                    onChange={e => onUpdate(p => p.map(x => x.id === t.id ? { ...x, a: e.target.value } : x))} />
+                </td>
+                <td style={S.td}>
+                  <input style={{ ...S.input, fontSize: 12, padding: "5px 8px" }} value={t.d}
+                    placeholder="e.g. May 1, 2025"
+                    onChange={e => onUpdate(p => p.map(x => x.id === t.id ? { ...x, d: e.target.value } : x))} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <button style={S.addBtn} onClick={() => onUpdate(p => [...p, { id: "t" + Date.now(), a: "", d: "" }])}>
+        + Add Milestone
+      </button>
     </div>
   );
 }
