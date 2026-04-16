@@ -882,6 +882,7 @@ export default function RequirementsAgent() {
   const [chatCollapsed, setChatCollapsed] = useState(false);
   const [bulletsCollapsed, setBulletsCollapsed] = useState(false);
   const [continuingChat, setContinuingChat] = useState(false);
+  const [inputCollapsed, setInputCollapsed] = useState(false);
   const [scopeFlags, setScopeFlags] = useState([]);
   const [flagResponses, setFlagResponses] = useState({});
   const [scopeApproved, setScopeApproved] = useState(false);
@@ -1029,6 +1030,7 @@ export default function RequirementsAgent() {
     setChatCollapsed(false);
     setBulletsCollapsed(false);
     setContinuingChat(false);
+    setInputCollapsed(false);
     setScopeFlags([]);
     setFlagResponses({});
     setScopeApproved(false);
@@ -1263,6 +1265,7 @@ export default function RequirementsAgent() {
     setScopeBullets([]); setBulletsApproved(false);
     setFormalScope(""); setScopeApproved(false); setScopeFlags([]); setExpertQuestions([]);
     setChatMessages([]);
+    setInputCollapsed(true);
     await doSendChatMessage(input);
   };
 
@@ -1853,6 +1856,13 @@ Example format:
             {saveStatus === "error" && <span style={{ color: "#e07070" }}>Save failed</span>}
             {saveStatus === "idle" && lastSaved && <span style={{ color: "#9CA3AF" }}><Clock size={11} style={{ display: "inline", marginRight: 4 }} />{lastSaved.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}</span>}
           </div>
+          <button className="rq-btn-ghost" style={{ whiteSpace: "nowrap" }} onClick={() => {
+            if (formalScope || scopeBullets.length > 0 || chatMessages.length > 0) {
+              if (!window.confirm("Start a new project? Your current project will remain saved.")) return;
+            }
+            resetSession();
+            setView("scope");
+          }}><Plus size={11} /> New project</button>
           {view !== "sessions" && view !== "splash" && (
             <>
               <button className="rq-btn-ghost" onClick={() => doSave("draft")} disabled={saveStatus === "saving"}><Save size={11} /> Save</button>
@@ -1944,15 +1954,13 @@ Example format:
               <div className="rq-fade">
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                   <div className="rq-section-label" style={{ marginBottom: 0 }}>{sessionsList.length} project{sessionsList.length !== 1 ? "s" : ""}</div>
-                  <button className="rq-btn-primary" style={{ padding: "8px 14px" }} onClick={() => { resetSession(); setView("scope"); }}><Plus size={12} /> New project</button>
                 </div>
                 {sessionsLoading && <div className="rq-loading-center"><Loader size={18} className="spin" /></div>}
                 {!sessionsLoading && sessionsList.length === 0 && (
                   <div style={{ textAlign: "center", padding: "56px 24px", background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.07)", borderRadius: 12 }}>
                     <div style={{ fontSize: 36, marginBottom: 14 }}>📂</div>
                     <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 15, fontWeight: 700, color: "#374151", marginBottom: 8 }}>No projects yet</div>
-                    <div style={{ fontFamily: "'Lora',serif", fontSize: 13, color: "#9CA3AF", marginBottom: 24, lineHeight: 1.6 }}>Start a new project to build your first business case.</div>
-                    <button className="rq-btn-primary" onClick={() => { resetSession(); setView("scope"); }}><Plus size={13} /> New project</button>
+                    <div style={{ fontFamily: "'Lora',serif", fontSize: 13, color: "#9CA3AF", lineHeight: 1.6 }}>Use the <strong>New project</strong> button in the header to get started.</div>
                   </div>
                 )}
                 {!sessionsLoading && sessionsList.length > 0 && (
@@ -2239,25 +2247,67 @@ Example format:
 
                 <div className="rq-section-label" style={{ marginBottom: 8 }}>What business problem are you trying to solve?</div>
 
-                {/* ── Stage 1: Initial textarea — before chat starts ── */}
-                {chatMessages.length === 0 && !scopeBullets.length && !formalScope && (
-                  <>
-                    <p className="rq-hint" style={{ marginBottom: 12 }}>Describe what you need in your own words — the system, the problem, who will use it, any deadlines or constraints, and what's out of scope. The more context you provide, the better the output.</p>
-                    <textarea
-                      className="rq-textarea"
-                      placeholder="e.g. Our HR team manages payroll, benefits, and employee records across three legacy systems that don't talk to each other. We need a single platform to consolidate these by end of 2026. Recruiting and performance management are out of scope..."
-                      value={answers.freeform || ""}
-                      onChange={e => setAnswers(p => ({ ...p, freeform: e.target.value }))}
-                      rows={5}
-                      style={{ marginBottom: 10 }}
-                    />
-                    <div className="rq-actions">
-                      <button className="rq-btn-primary" onClick={doStartChat} disabled={!allAnswered || chatBusy || scopeBusy}>
-                        {chatBusy ? <><Loader size={13} className="spin" /> Thinking…</> : <>Begin <ChevronRight size={13} /></>}
-                      </button>
+                {/* ── Stage 1: Initial input — always accessible, collapses after chat starts ── */}
+                <div style={{ marginBottom: chatMessages.length > 0 || scopeBullets.length > 0 ? 16 : 0 }}>
+                  {/* Header — only shown as collapsible after chat has started */}
+                  {(chatMessages.length > 0 || scopeBullets.length > 0 || formalScope) && (
+                    <div
+                      onClick={() => setInputCollapsed(p => !p)}
+                      style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", marginBottom: inputCollapsed ? 0 : 10, userSelect: "none" }}
+                    >
+                      {inputCollapsed ? <ChevronDown size={11} style={{ color: "#9CA3AF" }} /> : <ChevronUp size={11} style={{ color: "#9CA3AF" }} />}
+                      <span style={{ fontFamily: "'Syne',sans-serif", fontSize: 10, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: "#9CA3AF" }}>
+                        {inputCollapsed ? "View initial description" : "Initial description"}
+                      </span>
                     </div>
-                  </>
-                )}
+                  )}
+
+                  {/* Textarea — always shown when no chat, collapsible after */}
+                  {!inputCollapsed && (
+                    <div className="rq-fade">
+                      {chatMessages.length === 0 && (
+                        <p className="rq-hint" style={{ marginBottom: 12 }}>Describe what you need in your own words — the system, the problem, who will use it, any deadlines or constraints, and what's out of scope. The more context you provide, the better the output.</p>
+                      )}
+                      <textarea
+                        className="rq-textarea"
+                        placeholder="e.g. Our HR team manages payroll, benefits, and employee records across three legacy systems that don't talk to each other. We need a single platform to consolidate these by end of 2026. Recruiting and performance management are out of scope..."
+                        value={answers.freeform || ""}
+                        onChange={e => setAnswers(p => ({ ...p, freeform: e.target.value }))}
+                        rows={chatMessages.length > 0 ? 3 : 5}
+                        style={{ marginBottom: 10 }}
+                      />
+                      {chatMessages.length === 0 ? (
+                        <div className="rq-actions">
+                          <button className="rq-btn-primary" onClick={doStartChat} disabled={!allAnswered || chatBusy || scopeBusy}>
+                            {chatBusy ? <><Loader size={13} className="spin" /> Thinking…</> : <>Begin <ChevronRight size={13} /></>}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="rq-actions">
+                          <button className="rq-btn-ghost" style={{ fontSize: 11 }} onClick={() => {
+                            if (!answers.freeform?.trim()) return;
+                            if (window.confirm("Updating your description will restart the conversation. Continue?")) {
+                              setChatMessages([]);
+                              setScopeBullets([]);
+                              setFormalScope("");
+                              setScopeApproved(false);
+                              setScopeFlags([]);
+                              setExpertQuestions([]);
+                              setChatInput("");
+                              setChatCollapsed(false);
+                              setBulletsCollapsed(false);
+                              setContinuingChat(false);
+                              setInputCollapsed(false);
+                              doStartChat();
+                            }
+                          }}>
+                            ↺ Restart with updated description
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 {/* ── Stage 2: Active chat OR collapsed chat history ── */}
                 {chatMessages.length > 0 && (
