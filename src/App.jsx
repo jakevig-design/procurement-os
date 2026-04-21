@@ -537,34 +537,34 @@ function blankTimeline() {
 // ── DESIGN TOKENS ─────────────────────────────────────────────────────────────
 
 const C = {
-  bg: "#0B0B0E", surface: "#111116", border: "rgba(255,255,255,0.07)",
-  text: "#E2DDD6", muted: "rgba(255,255,255,0.35)", gold: "#C8922A",
-  blue: "#4A90D9", green: "#5DB88A", red: "#E24B4A",
+  bg: "#F9F8F8", surface: "#FFFFFF", border: "rgba(0,0,0,0.07)",
+  text: "#111827", muted: "#6B7280", gold: "#C2410C",
+  blue: "#1D4ED8", green: "#15803D", red: "#DC2626",
 };
 
 const css = {
-  app: { minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "'Libre Baskerville', Georgia, serif" },
-  header: { background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "0 36px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 60, position: "sticky", top: 0, zIndex: 200 },
-  wordmark: { fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 700, letterSpacing: 1, color: "#fff" },
-  nav: { background: C.surface, borderBottom: `1px solid ${C.border}`, display: "flex", padding: "0 36px", position: "sticky", top: 60, zIndex: 199 },
-  navBtn: (a) => ({ background: "none", border: "none", borderBottom: a ? `2px solid ${C.gold}` : "2px solid transparent", color: a ? C.gold : C.muted, padding: "0 18px", height: 44, fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", cursor: "pointer", fontFamily: "'Libre Baskerville', Georgia, serif", transition: "all 0.15s" }),
+  app: { minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "'Lora', Georgia, serif" },
+  header: { background: "#FFFFFF", borderBottom: `1px solid ${C.border}`, padding: "0 36px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 60, position: "sticky", top: 0, zIndex: 200, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" },
+  wordmark: { fontFamily: "'Syne', sans-serif", fontSize: 20, fontWeight: 800, letterSpacing: 1, color: C.text },
+  nav: { background: "#FFFFFF", borderBottom: `1px solid ${C.border}`, display: "flex", padding: "0 36px", position: "sticky", top: 60, zIndex: 199 },
+  navBtn: (a) => ({ background: "none", border: "none", borderBottom: a ? `2px solid ${C.gold}` : "2px solid transparent", color: a ? C.gold : C.muted, padding: "0 18px", height: 44, fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", cursor: "pointer", fontFamily: "'Syne', sans-serif", transition: "all 0.15s" }),
   body: { padding: "32px 36px 60px" },
-  card: { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: "20px 24px" },
-  secHead: { fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 700, color: "#fff", letterSpacing: 0.3 },
+  card: { background: "#FFFFFF", border: `1px solid ${C.border}`, borderRadius: 8, padding: "20px 24px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" },
+  secHead: { fontFamily: "'Syne', sans-serif", fontSize: 20, fontWeight: 800, color: C.text, letterSpacing: 0.3 },
   btn: (v = "ghost") => ({
-    background: v === "primary" ? C.gold : v === "danger" ? "#8B3A3A" : "rgba(255,255,255,0.06)",
-    color: v === "primary" ? "#000" : "#fff",
-    border: `1px solid ${v === "primary" ? C.gold : v === "danger" ? "#8B3A3A" : C.border}`,
+    background: v === "primary" ? C.gold : v === "danger" ? "#FEE2E2" : "#F3F4F6",
+    color: v === "primary" ? "#FFFFFF" : v === "danger" ? C.red : C.text,
+    border: `1px solid ${v === "primary" ? C.gold : v === "danger" ? "#FECACA" : C.border}`,
     borderRadius: 5, padding: "7px 14px", fontSize: 12, fontWeight: 700,
     cursor: "pointer", fontFamily: "inherit", letterSpacing: 0.3, transition: "all 0.15s",
   }),
-  input: { background: "rgba(255,255,255,0.04)", border: `1px solid ${C.border}`, borderRadius: 5, padding: "8px 12px", color: C.text, fontSize: 13, fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box" },
-  select: { background: "#1a1a20", border: `1px solid ${C.border}`, borderRadius: 5, padding: "8px 12px", color: C.text, fontSize: 13, fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box" },
+  input: { background: "#FFFFFF", border: `1px solid rgba(0,0,0,0.15)`, borderRadius: 5, padding: "8px 12px", color: C.text, fontSize: 13, fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box" },
+  select: { background: "#FFFFFF", border: `1px solid rgba(0,0,0,0.15)`, borderRadius: 5, padding: "8px 12px", color: C.text, fontSize: 13, fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box" },
   table: { width: "100%", borderCollapse: "collapse" },
   th: { fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: C.muted, padding: "8px 10px", textAlign: "left", borderBottom: `1px solid ${C.border}`, fontFamily: "monospace" },
-  td: { padding: "11px 10px", borderBottom: `1px solid rgba(255,255,255,0.04)`, fontSize: 13, verticalAlign: "middle" },
-  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center" },
-  modal: { background: "#16161c", border: `1px solid ${C.border}`, borderRadius: 10, padding: 28, width: 680, maxWidth: "92vw", maxHeight: "88vh", overflowY: "auto" },
+  td: { padding: "11px 10px", borderBottom: `1px solid rgba(0,0,0,0.04)`, fontSize: 13, verticalAlign: "middle" },
+  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center" },
+  modal: { background: "#FFFFFF", border: `1px solid ${C.border}`, borderRadius: 10, padding: 28, width: 680, maxWidth: "92vw", maxHeight: "88vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" },
 };
 
 // ── COMPONENTS ────────────────────────────────────────────────────────────────
@@ -584,7 +584,7 @@ function StageBadge({ stage }) {
 
 function ProgressBar({ pct, color, height = 3 }) {
   return (
-    <div style={{ height, background: "rgba(255,255,255,0.07)", borderRadius: 2, overflow: "hidden" }}>
+    <div style={{ height, background: "rgba(0,0,0,0.07)", borderRadius: 2, overflow: "hidden" }}>
       <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 2, transition: "width 0.6s ease" }} />
     </div>
   );
@@ -613,7 +613,7 @@ function StageProgress({ current }) {
             {i < STAGES.length - 1 && (
               <div style={{ position: "absolute", top: 14, left: "50%", right: "-50%", height: 2, background: isDone ? C.green : C.border, zIndex: 0 }} />
             )}
-            <div style={{ width: 10, height: 10, borderRadius: "50%", background: isDone ? C.green : isActive ? "#fff" : C.border, margin: "0 auto 5px", position: "relative", zIndex: 1, boxShadow: isActive ? `0 0 0 3px rgba(255,255,255,0.1)` : "none" }} />
+            <div style={{ width: 10, height: 10, borderRadius: "50%", background: isDone ? C.green : isActive ? C.gold : C.border, margin: "0 auto 5px", position: "relative", zIndex: 1, boxShadow: isActive ? `0 0 0 3px rgba(255,255,255,0.1)` : "none" }} />
             <div style={{ fontSize: 10, color: isActive ? "#fff" : C.muted, fontWeight: isActive ? 700 : 400, fontFamily: "monospace" }}>{cfg.label}</div>
           </div>
         );
@@ -755,15 +755,15 @@ function SourcingTab({ project, onUpdate }) {
     <div>
       {/* Score strip */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: "1.5rem" }}>
-        <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${scoreColor}44`, borderRadius: 8, padding: "16px 18px" }}>
+        <div style={{ background: "rgba(0,0,0,0.03)", border: `1px solid ${scoreColor}44`, borderRadius: 8, padding: "16px 18px" }}>
           <div style={{ fontSize: 10, color: C.muted, fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>READINESS SCORE</div>
-          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 40, fontWeight: 700, color: scoreColor, lineHeight: 1 }}>{score}</div>
+          <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 40, fontWeight: 700, color: scoreColor, lineHeight: 1 }}>{score}</div>
           <div style={{ fontSize: 11, color: C.muted, marginTop: 4, fontFamily: "monospace", marginBottom: 8 }}>
             {complete} complete · {inProgress} in progress · {applicable.length - complete - inProgress} required
           </div>
           <ProgressBar pct={score} color={scoreColor} height={4} />
         </div>
-        <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${C.border}`, borderRadius: 8, padding: "16px 18px" }}>
+        <div style={{ background: "rgba(0,0,0,0.03)", border: `1px solid ${C.border}`, borderRadius: 8, padding: "16px 18px" }}>
           <div style={{ fontSize: 10, color: C.muted, fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>RISK LEVEL</div>
           <div style={{ fontSize: 18, fontWeight: 700, color: scoreColor, marginBottom: 6 }}>
             {score >= 75 ? "Low Risk" : score >= 50 ? "Medium Risk" : "High Risk"}
@@ -772,7 +772,7 @@ function SourcingTab({ project, onUpdate }) {
             {score >= 75 ? "Sourcing process is well covered." : score >= 50 ? "Several key items still outstanding." : "Critical sourcing gaps identified."}
           </div>
         </div>
-        <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${C.border}`, borderRadius: 8, padding: "16px 18px" }}>
+        <div style={{ background: "rgba(0,0,0,0.03)", border: `1px solid ${C.border}`, borderRadius: 8, padding: "16px 18px" }}>
           <div style={{ fontSize: 10, color: C.muted, fontFamily: "monospace", letterSpacing: 1, marginBottom: 8 }}>WHERE IN PROCESS</div>
           <div style={{ fontSize: 12, color: C.text, lineHeight: 1.6 }}>{project.problemStage || "—"}</div>
         </div>
@@ -856,7 +856,7 @@ function VendorTab({ project, onUpdate }) {
           {vendors.map(v => (
             <div key={v.id} style={{ ...css.card }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{v.name}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{v.name}</div>
                 <button onClick={() => removeVendor(v.id)}
                   style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontSize: 14, padding: "0 0 0 8px", lineHeight: 1 }}
                   onMouseEnter={e => e.target.style.color = C.red} onMouseLeave={e => e.target.style.color = C.muted}>✕</button>
@@ -985,7 +985,7 @@ function ApprovalsTab({ project, onUpdate }) {
                 {/* Order number */}
                 <div style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: C.muted, fontFamily: "monospace", flexShrink: 0 }}>{i + 1}</div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{s.role}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{s.role}</div>
                   {s.name && <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{s.name}</div>}
                 </div>
                 <SignoffChip status={s.status} />
@@ -1050,18 +1050,18 @@ function SummaryTab({ project, riskScore, riskColor }) {
 
   const S = {
     page: { background: "#0F0F12", border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden", maxWidth: 860, margin: "0 auto" },
-    header: { background: "#16161C", borderBottom: `1px solid ${C.border}`, padding: "28px 36px" },
+    header: { background: "#F9F8F8", borderBottom: `1px solid ${C.border}`, padding: "28px 36px" },
     body: { padding: "28px 36px" },
     section: { marginBottom: 28 },
     sectionLabel: { fontSize: 9, letterSpacing: 2.5, textTransform: "uppercase", color: C.muted, fontFamily: "monospace", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 },
     sectionLine: { flex: 1, height: 1, background: C.border },
     row2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 },
     row3: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 },
-    metaCard: { background: "rgba(255,255,255,0.03)", border: `1px solid ${C.border}`, borderRadius: 6, padding: "12px 14px" },
+    metaCard: { background: "rgba(0,0,0,0.03)", border: `1px solid ${C.border}`, borderRadius: 6, padding: "12px 14px" },
     metaLabel: { fontSize: 9, color: C.muted, fontFamily: "monospace", letterSpacing: 1, marginBottom: 4 },
-    metaValue: { fontSize: 14, fontWeight: 700, color: "#fff" },
-    reqItem: { display: "flex", alignItems: "flex-start", gap: 10, padding: "8px 0", borderBottom: `1px solid rgba(255,255,255,0.04)` },
-    vendorRow: { display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: `1px solid rgba(255,255,255,0.04)` },
+    metaValue: { fontSize: 14, fontWeight: 700, color: C.text },
+    reqItem: { display: "flex", alignItems: "flex-start", gap: 10, padding: "8px 0", borderBottom: `1px solid rgba(0,0,0,0.04)` },
+    vendorRow: { display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: `1px solid rgba(0,0,0,0.04)` },
     tlItem: { display: "flex", alignItems: "center", gap: 10, padding: "6px 0" },
   };
 
@@ -1082,7 +1082,7 @@ function SummaryTab({ project, riskScore, riskColor }) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
               <div style={{ fontSize: 9, letterSpacing: 3, textTransform: "uppercase", color: C.gold, fontFamily: "monospace", marginBottom: 8 }}>Procurement OS · Project Summary</div>
-              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 26, fontWeight: 700, color: "#fff", lineHeight: 1.2, marginBottom: 6 }}>{project.name}</div>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 26, fontWeight: 700, color: C.text, lineHeight: 1.2, marginBottom: 6 }}>{project.name}</div>
               {project.dept && <div style={{ fontSize: 12, color: C.muted, fontFamily: "monospace" }}>{project.dept}</div>}
             </div>
             <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -1100,7 +1100,7 @@ function SummaryTab({ project, riskScore, riskColor }) {
                 const isActive = project.stage === s;
                 return (
                   <div key={s} style={{ flex: 1, textAlign: "center" }}>
-                    <div style={{ height: 3, background: isDone ? C.green : isActive ? sc.color : "rgba(255,255,255,0.08)", marginBottom: 6, borderRadius: 1 }} />
+                    <div style={{ height: 3, background: isDone ? C.green : isActive ? sc.color : "rgba(0,0,0,0.05)", marginBottom: 6, borderRadius: 1 }} />
                     <div style={{ fontSize: 9, fontFamily: "monospace", color: isActive ? "#fff" : C.muted, fontWeight: isActive ? 700 : 400 }}>{sc.label}</div>
                   </div>
                 );
@@ -1158,7 +1158,7 @@ function SummaryTab({ project, riskScore, riskColor }) {
               <div style={S.sectionLine} />
             </div>
             <div style={{ marginBottom: 12 }}>
-              <div style={{ height: 4, background: "rgba(255,255,255,0.07)", borderRadius: 2, overflow: "hidden" }}>
+              <div style={{ height: 4, background: "rgba(0,0,0,0.07)", borderRadius: 2, overflow: "hidden" }}>
                 <div style={{ height: "100%", width: `${riskScore}%`, background: riskColor, borderRadius: 2, transition: "width 0.5s" }} />
               </div>
               <div style={{ fontSize: 11, color: riskColor, fontFamily: "monospace", marginTop: 5 }}>
@@ -1237,12 +1237,12 @@ function SummaryTab({ project, riskScore, riskColor }) {
               {[...vendors].sort((a, b) => b.fit - a.fit).map(v => (
                 <div key={v.id} style={S.vendorRow}>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{v.name}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{v.name}</div>
                     {v.notes && <div style={{ fontSize: 11, color: C.muted, marginTop: 2, lineHeight: 1.5 }}>{v.notes}</div>}
                   </div>
                   <div style={{ flexShrink: 0, textAlign: "right" }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: v.fit >= 80 ? C.green : v.fit >= 65 ? C.gold : C.muted, fontFamily: "monospace" }}>{v.fit}% fit</div>
-                    <div style={{ width: 80, height: 3, background: "rgba(255,255,255,0.07)", borderRadius: 2, marginTop: 4, overflow: "hidden" }}>
+                    <div style={{ width: 80, height: 3, background: "rgba(0,0,0,0.07)", borderRadius: 2, marginTop: 4, overflow: "hidden" }}>
                       <div style={{ height: "100%", width: `${v.fit}%`, background: v.fit >= 80 ? C.green : v.fit >= 65 ? C.gold : C.muted, borderRadius: 2 }} />
                     </div>
                   </div>
@@ -1264,7 +1264,7 @@ function SummaryTab({ project, riskScore, riskColor }) {
               {(project.signoffs || []).map((s, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", border: `1px solid ${C.border}`, borderRadius: 6 }}>
                   <div>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>{s.role}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{s.role}</span>
                     {s.name && <span style={{ fontSize: 11, color: C.muted, marginLeft: 10 }}>{s.name}</span>}
                   </div>
                   <SignoffChip status={s.status} />
@@ -1375,7 +1375,7 @@ function TracksTab({ project, onUpdate }) {
 
       {/* Completion status */}
       {tracks.length > 0 && (
-        <div style={{ padding: "10px 16px", marginBottom: "1.5rem", borderRadius: 8, background: allComplete ? "rgba(93,184,138,0.08)" : "rgba(255,255,255,0.03)", border: `1px solid ${allComplete ? "rgba(93,184,138,0.3)" : C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ padding: "10px 16px", marginBottom: "1.5rem", borderRadius: 8, background: allComplete ? "rgba(93,184,138,0.08)" : "rgba(0,0,0,0.03)", border: `1px solid ${allComplete ? "rgba(93,184,138,0.3)" : C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ fontSize: 12, color: allComplete ? C.green : C.muted }}>
             {allComplete ? "All tracks complete — project can close cleanly." : `${incompleteTracks.length} track${incompleteTracks.length !== 1 ? "s" : ""} incomplete`}
           </div>
@@ -1411,9 +1411,9 @@ function TracksTab({ project, onUpdate }) {
                 <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 9px", borderRadius: 20, background: typeConfig.color + "22", color: typeConfig.color, border: `1px solid ${typeConfig.color}44`, fontFamily: "monospace" }}>
                   {typeConfig.label}
                 </span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "#fff", flex: 1 }}>{track.name}</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: C.text, flex: 1 }}>{track.name}</span>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 80, height: 3, background: "rgba(255,255,255,0.07)", borderRadius: 2, overflow: "hidden" }}>
+                  <div style={{ width: 80, height: 3, background: "rgba(0,0,0,0.07)", borderRadius: 2, overflow: "hidden" }}>
                     <div style={{ height: "100%", width: `${pct}%`, background: pct === 100 ? C.green : typeConfig.color, borderRadius: 2, transition: "width 0.3s" }} />
                   </div>
                   <span style={{ fontSize: 10, color: pct === 100 ? C.green : C.muted, fontFamily: "monospace" }}>{pct}%</span>
@@ -1427,7 +1427,7 @@ function TracksTab({ project, onUpdate }) {
                   const isSkipped = step.status === "skipped";
                   return (
                     <div key={step.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "8px 16px", opacity: isSkipped ? 0.4 : 1 }}
-                      onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
+                      onMouseEnter={e => e.currentTarget.style.background = "rgba(0,0,0,0.02)"}
                       onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                       {/* Checkbox */}
                       <div onClick={() => !isSkipped && toggleStep(step, track)}
@@ -1464,7 +1464,7 @@ function TracksTab({ project, onUpdate }) {
       {overrideModal && (
         <div style={css.overlay} onClick={e => e.target === e.currentTarget && setOverrideModal(false)}>
           <div style={{ ...css.modal, maxWidth: 480 }}>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 700, color: "#fff", marginBottom: 8 }}>Override incomplete tracks</div>
+            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 20, fontWeight: 700, color: C.text, marginBottom: 8 }}>Override incomplete tracks</div>
             <div style={{ fontSize: 13, color: C.muted, marginBottom: 16, lineHeight: 1.6 }}>
               {incompleteTracks.length} track{incompleteTracks.length !== 1 ? "s" : ""} incomplete:
               {incompleteTracks.map(t => (
@@ -1603,7 +1603,7 @@ Guidelines per category:
       {/* AI generation bar */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: "rgba(200,146,42,0.06)", border: `1px solid rgba(200,146,42,0.2)`, borderRadius: 8, marginBottom: "1.5rem" }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 2 }}>AI requirements draft</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 2 }}>AI requirements draft</div>
           <div style={{ fontSize: 11, color: C.muted }}>Generate a first draft across all six categories from the use case. Review and edit before confirming.</div>
         </div>
         <button style={{ ...css.btn("primary"), flexShrink: 0, opacity: aiLoading ? 0.6 : 1 }}
@@ -1642,10 +1642,10 @@ Guidelines per category:
             <div key={r.key} style={{ ...css.card, padding: 0, overflow: "hidden", border: preview ? `1px solid rgba(93,184,138,0.3)` : `1px solid ${C.border}` }}>
               <div onClick={() => setExpandedReq(isOpen ? null : r.key)}
                 style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", cursor: "pointer" }}
-                onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"}
+                onMouseEnter={e => e.currentTarget.style.background = "rgba(0,0,0,0.03)"}
                 onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                 <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 9px", borderRadius: 20, background: r.color + "22", color: r.color, border: `1px solid ${r.color}44`, fontFamily: "monospace", whiteSpace: "nowrap" }}>{r.label}</span>
-                <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "#fff" }}>{r.key.charAt(0).toUpperCase() + r.key.slice(1)} requirements</span>
+                <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: C.text }}>{r.key.charAt(0).toUpperCase() + r.key.slice(1)} requirements</span>
                 {preview && <span style={{ fontSize: 10, color: C.green, fontFamily: "monospace", fontWeight: 700 }}>AI draft ready</span>}
                 <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 9px", borderRadius: 20, background: req.status === "confirmed" ? C.green + "22" : req.status === "draft" ? C.blue + "22" : "rgba(255,255,255,0.05)", color: req.status === "confirmed" ? C.green : req.status === "draft" ? C.blue : C.muted, fontFamily: "monospace" }}>
                   {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
@@ -1820,11 +1820,11 @@ function LogTab({ project, onUpdate }) {
           const typeConfig = LOG_TYPES[entry.type] || LOG_TYPES.note;
           const isSystem = entry.type === "system";
           return (
-            <div key={entry.id || i} style={{ display: "flex", gap: 0, borderBottom: `1px solid rgba(255,255,255,0.04)` }}>
+            <div key={entry.id || i} style={{ display: "flex", gap: 0, borderBottom: `1px solid rgba(0,0,0,0.04)` }}>
               {/* Timeline spine */}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 40, flexShrink: 0, paddingTop: 16 }}>
                 <div style={{ width: 10, height: 10, borderRadius: "50%", background: typeConfig.color, border: `2px solid ${typeConfig.color}`, flexShrink: 0 }} />
-                {i < entries.length - 1 && <div style={{ width: 1, flex: 1, background: "rgba(255,255,255,0.06)", marginTop: 4 }} />}
+                {i < entries.length - 1 && <div style={{ width: 1, flex: 1, background: "rgba(0,0,0,0.06)", marginTop: 4 }} />}
               </div>
 
               {/* Entry content */}
@@ -1879,7 +1879,7 @@ function ProjectDetail({ project, onBack, onUpdate }) {
   return (
     <div>
       <div onClick={onBack} style={{ fontSize: 12, color: C.muted, cursor: "pointer", marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: 6 }}
-        onMouseEnter={e => e.currentTarget.style.color = "#fff"} onMouseLeave={e => e.currentTarget.style.color = C.muted}>
+        onMouseEnter={e => e.currentTarget.style.color = C.text} onMouseLeave={e => e.currentTarget.style.color = C.muted}>
         ← All projects
       </div>
 
@@ -1894,7 +1894,7 @@ function ProjectDetail({ project, onBack, onUpdate }) {
                   if (e.key === "Enter") { onUpdate(project.id, { name: nameDraft }); updateProjectField(project.id, { name: nameDraft }); setEditingName(false); }
                   if (e.key === "Escape") { setNameDraft(project.name); setEditingName(false); }
                 }}
-                style={{ ...css.input, fontSize: 22, fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, padding: "4px 10px", flex: 1 }}
+                style={{ ...css.input, fontSize: 22, fontFamily: "'Syne', sans-serif", fontWeight: 700, padding: "4px 10px", flex: 1 }}
                 autoFocus
               />
               <button style={css.btn("primary")} onClick={() => { onUpdate(project.id, { name: nameDraft }); updateProjectField(project.id, { name: nameDraft }); setEditingName(false); }}>Save</button>
@@ -1931,7 +1931,7 @@ function ProjectDetail({ project, onBack, onUpdate }) {
           { label: "Readiness", value: `${riskScore}%`, color: riskColor },
           { label: "Vendors", value: (project.vendors || []).length },
         ].map(m => (
-          <div key={m.label} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${C.border}`, borderRadius: 8, padding: "12px 14px" }}>
+          <div key={m.label} style={{ background: "rgba(0,0,0,0.03)", border: `1px solid ${C.border}`, borderRadius: 8, padding: "12px 14px" }}>
             <div style={{ fontSize: 10, color: C.muted, fontFamily: "monospace", marginBottom: 4 }}>{m.label.toUpperCase()}</div>
             <div style={{ fontSize: 14, fontWeight: 700, color: m.color || "#fff" }}>{m.value}</div>
           </div>
@@ -1985,7 +1985,7 @@ function ProjectDetail({ project, onBack, onUpdate }) {
             {REQ_CATEGORIES.map(r => {
               const req = project.requirements[r.key];
               return (
-                <div key={r.key} style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.03)", border: `1px solid ${C.border}`, borderRadius: 6, padding: "6px 12px" }}>
+                <div key={r.key} style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(0,0,0,0.03)", border: `1px solid ${C.border}`, borderRadius: 6, padding: "6px 12px" }}>
                   <SDot color={req.status === "confirmed" ? C.green : req.status === "draft" ? C.blue : C.muted} />
                   <span style={{ fontSize: 11, color: C.muted, fontFamily: "monospace" }}>{r.label}</span>
                 </div>
@@ -1998,7 +1998,7 @@ function ProjectDetail({ project, onBack, onUpdate }) {
             {project.signoffs.map((s, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", border: `1px solid ${C.border}`, borderRadius: 8 }}>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{s.role}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{s.role}</div>
                   {s.name && <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{s.name}</div>}
                 </div>
                 <SignoffChip status={s.status} />
@@ -2042,7 +2042,7 @@ function ProjectList({ projects, onOpen, stageFilter, setStageFilter }) {
       <div style={{ display: "flex", border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden", marginBottom: "1.5rem" }}>
         {[{ id: "all", label: "All projects", count: projects.length }, ...STAGES.map(s => ({ id: s, label: STAGE_CONFIG[s].label, count: counts[s] }))].map((t, i, arr) => (
           <div key={t.id} onClick={() => setStageFilter(t.id)}
-            style={{ flex: 1, padding: "10px 12px", textAlign: "center", cursor: "pointer", borderRight: i < arr.length - 1 ? `1px solid ${C.border}` : "none", background: stageFilter === t.id ? C.surface : "rgba(255,255,255,0.02)", transition: "background 0.15s" }}>
+            style={{ flex: 1, padding: "10px 12px", textAlign: "center", cursor: "pointer", borderRight: i < arr.length - 1 ? `1px solid ${C.border}` : "none", background: stageFilter === t.id ? C.surface : "rgba(0,0,0,0.02)", transition: "background 0.15s" }}>
             <div style={{ fontSize: 11, color: stageFilter === t.id ? "#fff" : C.muted, fontWeight: stageFilter === t.id ? 700 : 400, fontFamily: "monospace" }}>{t.label}</div>
             <div style={{ fontSize: 10, color: C.muted, marginTop: 2, fontFamily: "monospace" }}>{t.count}</div>
           </div>
@@ -2056,11 +2056,11 @@ function ProjectList({ projects, onOpen, stageFilter, setStageFilter }) {
           return (
             <div key={p.id} onClick={() => onOpen(p)}
               style={{ ...css.card, cursor: "pointer", transition: "border-color 0.15s" }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"}
+              onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(0,0,0,0.15)"}
               onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10 }}>
                 <div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", marginBottom: 3 }}>{p.name}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 3 }}>{p.name}</div>
                   <div style={{ fontSize: 12, color: C.muted, fontFamily: "monospace" }}>{p.dept}</div>
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -2140,14 +2140,14 @@ function Dashboard({ projects, onOpen, onUpdate }) {
 
   const S = {
     sectionLabel: { fontSize: 9, letterSpacing: 2.5, textTransform: "uppercase", color: C.muted, fontFamily: "monospace", marginBottom: 12 },
-    projectRow: { display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 0", borderBottom: `1px solid rgba(255,255,255,0.04)`, cursor: "pointer" },
+    projectRow: { display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 0", borderBottom: `1px solid rgba(0,0,0,0.04)`, cursor: "pointer" },
   };
 
   return (
     <div>
       {/* Date header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "1.5rem" }}>
-        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 700, color: "#fff" }}>
+        <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 28, fontWeight: 700, color: C.text }}>
           Good morning.
         </div>
         <div style={{ fontSize: 11, color: C.muted, fontFamily: "monospace" }}>{today.toUpperCase()}</div>
@@ -2161,9 +2161,9 @@ function Dashboard({ projects, onOpen, onUpdate }) {
           { label: "Pending approval", value: pendingApproval, alert: pendingApproval > 0 },
           { label: "Pipeline value", value: fmt(totalBudget) },
         ].map(m => (
-          <div key={m.label} style={{ background: m.alert ? "rgba(200,146,42,0.08)" : "rgba(255,255,255,0.03)", border: `1px solid ${m.alert ? "rgba(200,146,42,0.3)" : C.border}`, borderRadius: 8, padding: "14px 16px" }}>
+          <div key={m.label} style={{ background: m.alert ? "rgba(200,146,42,0.08)" : "rgba(0,0,0,0.03)", border: `1px solid ${m.alert ? "rgba(200,146,42,0.3)" : C.border}`, borderRadius: 8, padding: "14px 16px" }}>
             <div style={{ fontSize: 9, color: m.alert ? C.gold : C.muted, fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>{m.label.toUpperCase()}</div>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 30, fontWeight: 700, color: m.alert ? C.gold : "#fff", lineHeight: 1 }}>{m.value}</div>
+            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 30, fontWeight: 700, color: m.alert ? C.gold : "#fff", lineHeight: 1 }}>{m.value}</div>
           </div>
         ))}
       </div>
@@ -2181,12 +2181,12 @@ function Dashboard({ projects, onOpen, onUpdate }) {
             )}
             {nextActions.map(p => (
               <div key={p.id} style={S.projectRow}
-                onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
+                onMouseEnter={e => e.currentTarget.style.background = "rgba(0,0,0,0.02)"}
                 onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                 <div style={{ flex: 1 }} onClick={() => onOpen(p)}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                     <StageBadge stage={p.stage} />
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>{p.name}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{p.name}</span>
                   </div>
                   <div style={{ fontSize: 12, color: C.gold, lineHeight: 1.5 }}>→ {p.nextAction}</div>
                   {p.requestor && <div style={{ fontSize: 10, color: C.muted, fontFamily: "monospace", marginTop: 3 }}>{p.requestor}</div>}
@@ -2213,7 +2213,7 @@ function Dashboard({ projects, onOpen, onUpdate }) {
                       <span style={{ fontSize: 11, color: count > 0 ? "#fff" : C.muted, fontFamily: "monospace" }}>{cfg.label}</span>
                       <span style={{ fontSize: 11, color: cfg.color, fontFamily: "monospace", fontWeight: 700 }}>{count}</span>
                     </div>
-                    <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
+                    <div style={{ height: 3, background: "rgba(0,0,0,0.06)", borderRadius: 2, overflow: "hidden" }}>
                       <div style={{ height: "100%", width: `${pct}%`, background: cfg.color, borderRadius: 2, transition: "width 0.5s" }} />
                     </div>
                   </div>
@@ -2242,12 +2242,12 @@ function Dashboard({ projects, onOpen, onUpdate }) {
               const pendingApprovals = (p.signoffs || []).filter(s => s.status === "pending").length;
               return (
                 <div key={p.id} style={S.projectRow} onClick={() => onOpen(p)}
-                  onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
+                  onMouseEnter={e => e.currentTarget.style.background = "rgba(0,0,0,0.02)"}
                   onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                       <StageBadge stage={p.stage} />
-                      <span style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>{p.name}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{p.name}</span>
                     </div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       {isStale && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 10, background: "rgba(226,75,74,0.15)", color: C.red, fontFamily: "monospace" }}>No activity {daysSince}d</span>}
@@ -2269,14 +2269,14 @@ function Dashboard({ projects, onOpen, onUpdate }) {
             {recentActivity.map((a, i) => {
               const typeConfig = LOG_TYPES?.[a.type] || { label: "Note", color: C.muted };
               return (
-                <div key={i} style={{ display: "flex", gap: 10, padding: "10px 0", borderBottom: `1px solid rgba(255,255,255,0.04)`, cursor: "pointer" }}
+                <div key={i} style={{ display: "flex", gap: 10, padding: "10px 0", borderBottom: `1px solid rgba(0,0,0,0.04)`, cursor: "pointer" }}
                   onClick={() => onOpen(projects.find(p => p.id === a.projectId))}
-                  onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
+                  onMouseEnter={e => e.currentTarget.style.background = "rgba(0,0,0,0.02)"}
                   onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                   <div style={{ width: 6, borderRadius: 3, background: typeConfig.color, flexShrink: 0, alignSelf: "stretch", minHeight: 8 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 11, color: C.muted, fontFamily: "monospace", marginBottom: 2, display: "flex", gap: 6 }}>
-                      <span style={{ color: "#fff", fontWeight: 700 }}>{a.projectName}</span>
+                      <span style={{ color: C.text, fontWeight: 700 }}>{a.projectName}</span>
                       <span>·</span>
                       <span>{formatLogDate(a.created_at)}</span>
                     </div>
@@ -2294,7 +2294,7 @@ function Dashboard({ projects, onOpen, onUpdate }) {
         <div style={css.overlay} onClick={e => e.target === e.currentTarget && setQuickNote(null)}>
           <div style={{ ...css.modal, maxWidth: 480 }}>
             <div style={{ fontSize: 13, color: C.muted, fontFamily: "monospace", marginBottom: 4 }}>Quick note</div>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 700, color: "#fff", marginBottom: 16 }}>{quickNote.projectName}</div>
+            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 20, fontWeight: 700, color: C.text, marginBottom: 16 }}>{quickNote.projectName}</div>
             <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
               {Object.entries(LOG_TYPES).filter(([k]) => k !== "system").map(([key, val]) => (
                 <div key={key} onClick={() => setNoteType(key)}
@@ -2355,7 +2355,7 @@ function NewProjectModal({ onSave, onClose }) {
   return (
     <div style={css.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={css.modal}>
-        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 700, color: "#fff", marginBottom: 20 }}>New project</div>
+        <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700, color: C.text, marginBottom: 20 }}>New project</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div>{lbl("PROJECT NAME")}<input style={css.input} value={form.name} onChange={e => set("name", e.target.value)} placeholder="e.g. CRM expansion — sales ops" /></div>
           <div>{lbl("REQUESTOR")}<input style={css.input} value={form.requestor} onChange={e => set("requestor", e.target.value)} placeholder="Name / email" /></div>
@@ -2460,7 +2460,7 @@ export default function App() {
 
   return (
     <div style={css.app}>
-      <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
       <div style={css.header}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
           <div style={css.wordmark}>PROCUREMENT <span style={{ color: C.gold }}>OS</span></div>
