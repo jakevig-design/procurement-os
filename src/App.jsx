@@ -1,7 +1,177 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "./supabase";
 
-// ── SUPABASE HELPERS ──────────────────────────────────────────────────────────
+// ── TRACK TEMPLATES ───────────────────────────────────────────────────────────
+
+const TRACK_TEMPLATES = {
+  nda: [
+    { type: "document", name: "NDA execution", steps: [
+      { label: "Select or draft NDA template" },
+      { label: "Legal review", approver_name: "", notification: "email" },
+      { label: "Infosec review", approver_name: "", notification: "email" },
+      { label: "Send for signature via DocuSign" },
+      { label: "Countersignature received" },
+      { label: "Filed and linked to project" },
+    ]},
+  ],
+  order_form: [
+    { type: "document", name: "Order form review", steps: [
+      { label: "Confirm MSA is current and covers this purchase" },
+      { label: "Review order form terms — price, quantity, term, start date" },
+      { label: "Flag non-standard terms (triggers Legal + Infosec if yes)" },
+      { label: "Legal review", approver_name: "", notification: "email" },
+      { label: "Infosec review", approver_name: "", notification: "email" },
+      { label: "Budget confirmation", approver_name: "", notification: "email" },
+      { label: "Send for signature via DocuSign" },
+      { label: "Countersignature received" },
+      { label: "Filed and linked — PO triggered" },
+    ]},
+  ],
+  renewal: [
+    { type: "document", name: "Contract review", steps: [
+      { label: "Pull current contract from CMS" },
+      { label: "Assess renewal scope — same terms, expansion, reduction, or renegotiate" },
+      { label: "Confirm budget delta from current spend", approver_name: "", notification: "email" },
+      { label: "Determine path — accept, negotiate, or go to market" },
+    ]},
+    { type: "approval", name: "Renewal approval", steps: [
+      { label: "Legal review (if terms changing)", approver_name: "", notification: "email" },
+      { label: "Infosec review (if terms changing)", approver_name: "", notification: "email" },
+      { label: "Authorized signatory sign-off", approver_name: "", notification: "email" },
+      { label: "Send for signature via DocuSign" },
+      { label: "Countersignature received — renewal flag reset" },
+    ]},
+  ],
+  sole_source: [
+    { type: "approval", name: "Sole source justification", steps: [
+      { label: "Document sole source justification — incumbent, proprietary, time constraint, or no viable alternative" },
+      { label: "Justification approved by budget owner", approver_name: "", notification: "email" },
+      { label: "Scope sign-off by stakeholder", approver_name: "", notification: "email" },
+    ]},
+    { type: "review", name: "Legal + Infosec review", steps: [
+      { label: "Legal review", approver_name: "", notification: "email" },
+      { label: "Infosec review", approver_name: "", notification: "email" },
+    ]},
+    { type: "document", name: "Contract execution", steps: [
+      { label: "Commercial terms negotiated" },
+      { label: "Executive sign-off (threshold-based)", approver_name: "", notification: "email" },
+      { label: "Send for signature via DocuSign" },
+      { label: "Countersignature received" },
+      { label: "Filed and linked — PO triggered" },
+    ]},
+  ],
+  msa: [
+    { type: "approval", name: "Scope approval", steps: [
+      { label: "Scope of agreement defined — term, products/services, pricing structure, key protections" },
+      { label: "Scope sign-off by stakeholder", approver_name: "", notification: "email" },
+    ]},
+    { type: "review", name: "Legal + Infosec review", steps: [
+      { label: "Legal review — redline cycle begins", approver_name: "", notification: "email" },
+      { label: "Infosec review", approver_name: "", notification: "email" },
+      { label: "Redline resolved" },
+    ]},
+    { type: "document", name: "MSA execution", steps: [
+      { label: "Commercial terms agreed" },
+      { label: "Executive sign-off (threshold-based)", approver_name: "", notification: "email" },
+      { label: "Send for signature via DocuSign" },
+      { label: "Countersignature received" },
+      { label: "Filed and linked to CMS" },
+    ]},
+  ],
+  rfx: [
+    { type: "approval", name: "RFx approval chain", steps: [
+      { label: "Scope sign-off by stakeholder", approver_name: "", notification: "email" },
+      { label: "Approval to go to market — RFP issued", approver_name: "", notification: "email" },
+      { label: "Vendor selection approved by evaluation committee", approver_name: "", notification: "email" },
+      { label: "Commercial terms approved", approver_name: "", notification: "email" },
+      { label: "Executive sign-off (threshold-based)", approver_name: "", notification: "email" },
+    ]},
+    { type: "document", name: "RFx document track", steps: [
+      { label: "NDA executed with each vendor" },
+      { label: "RFP issued" },
+      { label: "Vendor responses received" },
+      { label: "Evaluation completed — scoring documented" },
+      { label: "MSA + order form negotiated with selected vendor" },
+      { label: "Send for signature via DocuSign" },
+      { label: "Countersignature received — PO triggered" },
+    ]},
+    { type: "review", name: "Legal + Infosec review", steps: [
+      { label: "Infosec vendor questionnaire sent to finalists" },
+      { label: "Infosec review completed", approver_name: "", notification: "email" },
+      { label: "Legal review of final contract", approver_name: "", notification: "email" },
+      { label: "Redline resolved" },
+    ]},
+  ],
+  other: [
+    { type: "document", name: "General engagement", steps: [
+      { label: "Define scope and requirements" },
+      { label: "Budget confirmation", approver_name: "", notification: "email" },
+      { label: "Legal + Infosec review if applicable", approver_name: "", notification: "email" },
+      { label: "Sign-off", approver_name: "", notification: "email" },
+      { label: "Execute and file" },
+    ]},
+  ],
+};
+
+const CHANNELS = [
+  { id: "nda",          label: "NDA" },
+  { id: "order_form",   label: "Order form" },
+  { id: "renewal",      label: "Renewal" },
+  { id: "sole_source",  label: "Sole source" },
+  { id: "msa",          label: "MSA negotiation" },
+  { id: "rfx",          label: "RFx / Competitive bid" },
+  { id: "other",        label: "Other" },
+];
+
+async function saveTracksForProject(projectId, channel) {
+  const templates = TRACK_TEMPLATES[channel] || TRACK_TEMPLATES.other;
+  for (let ti = 0; ti < templates.length; ti++) {
+    const tmpl = templates[ti];
+    const trackId = projectId + "_track_" + ti;
+    await supabase.from("po_tracks").upsert([{
+      id: trackId,
+      project_id: projectId,
+      type: tmpl.type,
+      name: tmpl.name,
+      status: "not_started",
+      sort_order: ti,
+    }]);
+    for (let si = 0; si < tmpl.steps.length; si++) {
+      const step = tmpl.steps[si];
+      await supabase.from("po_track_steps").upsert([{
+        id: trackId + "_step_" + si,
+        track_id: trackId,
+        project_id: projectId,
+        label: step.label,
+        status: "pending",
+        approver_name: step.approver_name || "",
+        approver_email: step.approver_email || "",
+        notification: step.notification || "email",
+        sort_order: si,
+      }]);
+    }
+  }
+}
+
+async function loadTracksForProject(projectId) {
+  const { data: tracks } = await supabase.from("po_tracks")
+    .select("*").eq("project_id", projectId).order("sort_order");
+  if (!tracks) return [];
+  const { data: steps } = await supabase.from("po_track_steps")
+    .select("*").eq("project_id", projectId).order("sort_order");
+  return tracks.map(t => ({
+    ...t,
+    steps: (steps || []).filter(s => s.track_id === t.id),
+  }));
+}
+
+async function updateTrackStep(stepId, updates) {
+  await supabase.from("po_track_steps").update(updates).eq("id", stepId);
+}
+
+async function updateTrack(trackId, updates) {
+  await supabase.from("po_tracks").update(updates).eq("id", trackId);
+}
 
 const REQ_KEYS = ["functional", "scale", "integration", "risk", "security", "commercial"];
 const SOURCING_KEYS = ["nda", "masterAgreement", "commodity", "licenseModel", "competitiveBid", "riskAssessment", "securityReview", "legalReview"];
@@ -37,6 +207,7 @@ async function loadAllProjects() {
 
     return {
       nextAction: p.next_action || "",
+      channel: p.channel || "other",
       name: p.name,
       dept: p.dept,
       stage: p.stage,
@@ -117,6 +288,7 @@ async function updateProjectField(id, fields) {
   if (fields.category !== undefined)     mapped.category = fields.category;
   if (fields.requestor !== undefined)    mapped.requestor = fields.requestor;
   if (fields.nextAction !== undefined)   mapped.next_action = fields.nextAction;
+  if (fields.channel !== undefined)      mapped.channel = fields.channel;
   if (Object.keys(mapped).length) {
     await supabase.from("po_projects").update(mapped).eq("id", id);
   }
@@ -1112,6 +1284,218 @@ function SummaryTab({ project, riskScore, riskColor }) {
   );
 }
 
+// ── TRACKS TAB ───────────────────────────────────────────────────────────────
+
+const TRACK_TYPE_CONFIG = {
+  document: { label: "Document",  color: "#4A90D9" },
+  review:   { label: "Review",    color: "#C8922A" },
+  approval: { label: "Approval",  color: "#9B6DD4" },
+};
+
+const STEP_STATUS_CONFIG = {
+  pending:           { label: "Pending",          color: "#7B8FA1" },
+  in_progress:       { label: "In progress",      color: "#4A90D9" },
+  complete:          { label: "Complete",          color: "#5DB88A" },
+  skipped:           { label: "Skipped",           color: "#444" },
+};
+
+function TracksTab({ project, onUpdate }) {
+  const [tracks, setTracks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [overrideModal, setOverrideModal] = useState(false);
+  const [overrideReason, setOverrideReason] = useState("");
+  const [channelChanging, setChannelChanging] = useState(false);
+
+  useEffect(() => {
+    loadTracksForProject(project.id).then(t => {
+      setTracks(t);
+      setLoading(false);
+    });
+  }, [project.id]);
+
+  async function handleChannelChange(channel) {
+    setChannelChanging(true);
+    await supabase.from("po_tracks").delete().eq("project_id", project.id);
+    await supabase.from("po_track_steps").delete().eq("project_id", project.id);
+    await saveTracksForProject(project.id, channel);
+    onUpdate(project.id, { channel });
+    const t = await loadTracksForProject(project.id);
+    setTracks(t);
+    setChannelChanging(false);
+  }
+
+  async function toggleStep(step, track) {
+    const newStatus = step.status === "complete" ? "pending" : "complete";
+    const completedAt = newStatus === "complete" ? new Date().toISOString() : null;
+    await updateTrackStep(step.id, { status: newStatus, completed_at: completedAt });
+    const updated = tracks.map(t => t.id === track.id ? {
+      ...t,
+      steps: t.steps.map(s => s.id === step.id ? { ...s, status: newStatus, completed_at: completedAt } : s)
+    } : t);
+    setTracks(updated);
+
+    // Auto-update track status
+    const updatedTrack = updated.find(t => t.id === track.id);
+    const allComplete = updatedTrack.steps.every(s => s.status === "complete" || s.status === "skipped");
+    const anyInProgress = updatedTrack.steps.some(s => s.status === "in_progress" || s.status === "complete");
+    const trackStatus = allComplete ? "complete" : anyInProgress ? "in_progress" : "not_started";
+    await updateTrack(track.id, { status: trackStatus });
+    setTracks(prev => prev.map(t => t.id === track.id ? { ...t, status: trackStatus } : t));
+  }
+
+  async function skipStep(step, track) {
+    await updateTrackStep(step.id, { status: "skipped" });
+    setTracks(tracks.map(t => t.id === track.id ? {
+      ...t,
+      steps: t.steps.map(s => s.id === step.id ? { ...s, status: "skipped" } : s)
+    } : t));
+  }
+
+  const incompleteTracks = tracks.filter(t => t.status !== "complete" && t.status !== "skipped");
+  const allComplete = incompleteTracks.length === 0 && tracks.length > 0;
+
+  const trackTypeColor = (type) => TRACK_TYPE_CONFIG[type]?.color || C.muted;
+  const stepStatusColor = (status) => STEP_STATUS_CONFIG[status]?.color || C.muted;
+
+  return (
+    <div>
+      {/* Channel selector */}
+      <div style={{ ...css.card, marginBottom: "1.5rem" }}>
+        <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: C.muted, fontFamily: "monospace", marginBottom: 12 }}>Buying channel</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {CHANNELS.map(ch => (
+            <div key={ch.id} onClick={() => !channelChanging && handleChannelChange(ch.id)}
+              style={{ fontSize: 11, fontWeight: project.channel === ch.id ? 700 : 400, padding: "6px 14px", borderRadius: 20, cursor: channelChanging ? "wait" : "pointer", fontFamily: "monospace", border: `1px solid ${project.channel === ch.id ? C.gold : C.border}`, background: project.channel === ch.id ? C.gold + "22" : "transparent", color: project.channel === ch.id ? C.gold : C.muted, transition: "all 0.15s" }}>
+              {ch.label}
+            </div>
+          ))}
+        </div>
+        {channelChanging && <div style={{ fontSize: 11, color: C.muted, fontFamily: "monospace", marginTop: 10 }}>Generating tracks…</div>}
+      </div>
+
+      {/* Completion status */}
+      {tracks.length > 0 && (
+        <div style={{ padding: "10px 16px", marginBottom: "1.5rem", borderRadius: 8, background: allComplete ? "rgba(93,184,138,0.08)" : "rgba(255,255,255,0.03)", border: `1px solid ${allComplete ? "rgba(93,184,138,0.3)" : C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ fontSize: 12, color: allComplete ? C.green : C.muted }}>
+            {allComplete ? "All tracks complete — project can close cleanly." : `${incompleteTracks.length} track${incompleteTracks.length !== 1 ? "s" : ""} incomplete`}
+          </div>
+          {!allComplete && (
+            <button style={{ ...css.btn(), fontSize: 11, color: C.gold, borderColor: "rgba(200,146,42,0.3)" }}
+              onClick={() => setOverrideModal(true)}>
+              Override + close ↗
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Track list */}
+      {loading && <div style={{ fontSize: 12, color: C.muted, fontStyle: "italic" }}>Loading tracks…</div>}
+
+      {!loading && tracks.length === 0 && (
+        <div style={{ ...css.card, textAlign: "center", padding: "2rem" }}>
+          <div style={{ fontSize: 13, color: C.muted, fontStyle: "italic" }}>Select a buying channel above to generate tracks.</div>
+        </div>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {tracks.map(track => {
+          const typeConfig = TRACK_TYPE_CONFIG[track.type] || TRACK_TYPE_CONFIG.document;
+          const completedSteps = track.steps.filter(s => s.status === "complete" || s.status === "skipped").length;
+          const totalSteps = track.steps.length;
+          const pct = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+
+          return (
+            <div key={track.id} style={{ ...css.card, padding: 0, overflow: "hidden" }}>
+              {/* Track header */}
+              <div style={{ padding: "14px 16px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 9px", borderRadius: 20, background: typeConfig.color + "22", color: typeConfig.color, border: `1px solid ${typeConfig.color}44`, fontFamily: "monospace" }}>
+                  {typeConfig.label}
+                </span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#fff", flex: 1 }}>{track.name}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ width: 80, height: 3, background: "rgba(255,255,255,0.07)", borderRadius: 2, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${pct}%`, background: pct === 100 ? C.green : typeConfig.color, borderRadius: 2, transition: "width 0.3s" }} />
+                  </div>
+                  <span style={{ fontSize: 10, color: pct === 100 ? C.green : C.muted, fontFamily: "monospace" }}>{pct}%</span>
+                </div>
+              </div>
+
+              {/* Steps */}
+              <div style={{ padding: "8px 0" }}>
+                {track.steps.map((step, si) => {
+                  const isDone = step.status === "complete";
+                  const isSkipped = step.status === "skipped";
+                  return (
+                    <div key={step.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "8px 16px", opacity: isSkipped ? 0.4 : 1 }}
+                      onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
+                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                      {/* Checkbox */}
+                      <div onClick={() => !isSkipped && toggleStep(step, track)}
+                        style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${isDone ? C.green : C.border}`, background: isDone ? C.green : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: isSkipped ? "default" : "pointer", marginTop: 1, transition: "all 0.15s" }}>
+                        {isDone && <span style={{ fontSize: 9, color: "#000", fontWeight: 900 }}>✓</span>}
+                      </div>
+                      {/* Step content */}
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, color: isDone ? C.muted : "#fff", textDecoration: isDone ? "line-through" : "none", lineHeight: 1.5 }}>{step.label}</div>
+                        {step.approver_name && (
+                          <div style={{ fontSize: 11, color: C.muted, fontFamily: "monospace", marginTop: 2 }}>Approver: {step.approver_name}</div>
+                        )}
+                        {step.completed_at && (
+                          <div style={{ fontSize: 10, color: C.green, fontFamily: "monospace", marginTop: 2 }}>{formatLogDate(step.completed_at)}</div>
+                        )}
+                      </div>
+                      {/* Skip */}
+                      {!isDone && !isSkipped && (
+                        <button onClick={() => skipStep(step, track)}
+                          style={{ fontSize: 10, color: C.muted, background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px", flexShrink: 0 }}>
+                          skip
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Override modal */}
+      {overrideModal && (
+        <div style={css.overlay} onClick={e => e.target === e.currentTarget && setOverrideModal(false)}>
+          <div style={{ ...css.modal, maxWidth: 480 }}>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 700, color: "#fff", marginBottom: 8 }}>Override incomplete tracks</div>
+            <div style={{ fontSize: 13, color: C.muted, marginBottom: 16, lineHeight: 1.6 }}>
+              {incompleteTracks.length} track{incompleteTracks.length !== 1 ? "s" : ""} incomplete:
+              {incompleteTracks.map(t => (
+                <div key={t.id} style={{ fontSize: 12, color: C.red, fontFamily: "monospace", marginTop: 4 }}>· {t.name}</div>
+              ))}
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, fontFamily: "monospace", marginBottom: 6 }}>REASON FOR OVERRIDE (required)</div>
+            <textarea value={overrideReason} onChange={e => setOverrideReason(e.target.value)}
+              placeholder="e.g. Legal verbally approved, paperwork to follow within 48hrs"
+              rows={3} style={{ ...css.input, resize: "vertical", lineHeight: 1.6, marginBottom: 16 }} autoFocus />
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button style={css.btn()} onClick={() => { setOverrideModal(false); setOverrideReason(""); }}>Cancel</button>
+              <button style={{ ...css.btn(), color: C.red, borderColor: "rgba(226,75,74,0.4)", opacity: !overrideReason.trim() ? 0.4 : 1 }}
+                disabled={!overrideReason.trim()}
+                onClick={async () => {
+                  const msg = `Project closed with incomplete tracks. Incomplete: ${incompleteTracks.map(t => t.name).join(", ")}. Reason: ${overrideReason.trim()}`;
+                  await addLogEntry(project.id, msg, "system", "SYS");
+                  setOverrideModal(false);
+                  setOverrideReason("");
+                  onUpdate(project.id, { stage: "agreement" });
+                }}>
+                Override and close →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── REQUIREMENTS TAB ─────────────────────────────────────────────────────────
 
 function RequirementsTab({ project, onUpdate }) {
@@ -1490,7 +1874,7 @@ function ProjectDetail({ project, onBack, onUpdate }) {
     if (si < STAGES.length - 1) onUpdate(project.id, { stage: STAGES[si + 1] });
   }
 
-  const detailTabs = ["summary", "overview", "requirements", "vendors", "sourcing", "timeline", "approvals", "log"];
+  const detailTabs = ["summary", "overview", "requirements", "vendors", "sourcing", "tracks", "timeline", "approvals", "log"];
 
   return (
     <div>
@@ -1631,6 +2015,7 @@ function ProjectDetail({ project, onBack, onUpdate }) {
 
       {activeTab === "vendors"   && <VendorTab   project={project} onUpdate={onUpdate} />}
       {activeTab === "sourcing"  && <SourcingTab  project={project} onUpdate={onUpdate} />}
+      {activeTab === "tracks"    && <TracksTab    project={project} onUpdate={onUpdate} />}
       {activeTab === "timeline"  && <TimelineTab  project={project} onUpdate={onUpdate} />}
 
       {/* ── APPROVALS ── */}
@@ -1703,59 +2088,235 @@ function ProjectList({ projects, onOpen, stageFilter, setStageFilter }) {
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
 
-function Dashboard({ projects }) {
+function Dashboard({ projects, onOpen, onUpdate }) {
+  const [quickNote, setQuickNote] = useState(null); // { projectId, projectName }
+  const [noteDraft, setNoteDraft] = useState("");
+  const [noteType, setNoteType] = useState("note");
+  const [noteSaving, setNoteSaving] = useState(false);
+
+  const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+
+  // Attention items — needs action today
+  const needsAttention = projects.filter(p => {
+    const hasNextAction = p.nextAction?.trim();
+    const isActive = !["agreement"].includes(p.stage);
+    const lastActivity = p.activity?.[0]?.created_at;
+    const daysSinceActivity = lastActivity ? Math.floor((Date.now() - new Date(lastActivity)) / 86400000) : 999;
+    const isStale = daysSinceActivity > 7 && isActive;
+    const pendingApprovals = (p.signoffs || []).filter(s => s.status === "pending").length > 0;
+    return isActive && (hasNextAction || isStale || pendingApprovals);
+  });
+
+  // Next actions across all projects
+  const nextActions = projects
+    .filter(p => p.nextAction?.trim() && p.stage !== "agreement")
+    .sort((a, b) => {
+      const stageOrder = { concept: 0, definition: 1, execution: 2, approval: 3, agreement: 4 };
+      return (stageOrder[b.stage] || 0) - (stageOrder[a.stage] || 0);
+    });
+
+  // Pipeline counts
   const total = projects.length;
   const byStage = STAGES.reduce((a, s) => ({ ...a, [s]: projects.filter(p => p.stage === s).length }), {});
-  const totalBudget = projects.reduce((a, p) => a + p.budgetHigh, 0);
-  const inFlight = projects.filter(p => !["concept", "agreement"].includes(p.stage)).length;
+  const totalBudget = projects.reduce((a, p) => a + (p.budgetHigh || 0), 0);
+  const pendingApproval = projects.filter(p => p.stage === "approval").length;
+  const inFlight = projects.filter(p => ["definition", "execution", "approval"].includes(p.stage)).length;
+
+  // Recent log activity across all projects
+  const recentActivity = projects
+    .flatMap(p => (p.activity || []).map(a => ({ ...a, projectName: p.name, projectId: p.id, stage: p.stage })))
+    .filter(a => a.type !== "system")
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .slice(0, 6);
+
+  async function submitQuickNote() {
+    if (!noteDraft.trim() || !quickNote) return;
+    setNoteSaving(true);
+    await addLogEntry(quickNote.projectId, noteDraft.trim(), noteType, "—");
+    setNoteDraft("");
+    setQuickNote(null);
+    setNoteSaving(false);
+  }
+
+  const S = {
+    sectionLabel: { fontSize: 9, letterSpacing: 2.5, textTransform: "uppercase", color: C.muted, fontFamily: "monospace", marginBottom: 12 },
+    projectRow: { display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 0", borderBottom: `1px solid rgba(255,255,255,0.04)`, cursor: "pointer" },
+  };
 
   return (
     <div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: "1.5rem" }}>
+      {/* Date header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "1.5rem" }}>
+        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 700, color: "#fff" }}>
+          Good morning.
+        </div>
+        <div style={{ fontSize: 11, color: C.muted, fontFamily: "monospace" }}>{today.toUpperCase()}</div>
+      </div>
+
+      {/* KPI strip */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: "1.5rem" }}>
         {[
           { label: "Active projects", value: total },
           { label: "In flight", value: inFlight },
-          { label: "Pending approval", value: byStage.approval },
-          { label: "Total pipeline value", value: fmt(totalBudget) },
+          { label: "Pending approval", value: pendingApproval, alert: pendingApproval > 0 },
+          { label: "Pipeline value", value: fmt(totalBudget) },
         ].map(m => (
-          <div key={m.label} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${C.border}`, borderRadius: 8, padding: "16px 18px" }}>
-            <div style={{ fontSize: 10, color: C.muted, fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>{m.label.toUpperCase()}</div>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 32, fontWeight: 700, color: "#fff", lineHeight: 1 }}>{m.value}</div>
+          <div key={m.label} style={{ background: m.alert ? "rgba(200,146,42,0.08)" : "rgba(255,255,255,0.03)", border: `1px solid ${m.alert ? "rgba(200,146,42,0.3)" : C.border}`, borderRadius: 8, padding: "14px 16px" }}>
+            <div style={{ fontSize: 9, color: m.alert ? C.gold : C.muted, fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>{m.label.toUpperCase()}</div>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 30, fontWeight: 700, color: m.alert ? C.gold : "#fff", lineHeight: 1 }}>{m.value}</div>
           </div>
         ))}
       </div>
-      <div style={{ ...css.card, marginBottom: "1.5rem" }}>
-        <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: C.muted, fontFamily: "monospace", marginBottom: 16 }}>Pipeline by stage</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 16 }}>
-          {STAGES.map(s => {
-            const cfg = STAGE_CONFIG[s];
-            const count = byStage[s];
-            return (
-              <div key={s} style={{ textAlign: "center" }}>
-                <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 36, fontWeight: 700, color: cfg.color, lineHeight: 1 }}>{count}</div>
-                <div style={{ fontSize: 11, color: C.muted, fontFamily: "monospace", marginTop: 4 }}>{cfg.label}</div>
-                <div style={{ height: 3, background: cfg.color + "33", borderRadius: 2, marginTop: 8, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: total > 0 ? `${(count / total) * 100}%` : "0%", background: cfg.color, borderRadius: 2 }} />
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+
+        {/* LEFT COLUMN */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+          {/* Next actions */}
+          <div style={{ ...css.card }}>
+            <div style={S.sectionLabel}>Next actions</div>
+            {nextActions.length === 0 && (
+              <div style={{ fontSize: 12, color: C.muted, fontStyle: "italic" }}>No next actions set. Open a project and set one in the Log tab.</div>
+            )}
+            {nextActions.map(p => (
+              <div key={p.id} style={S.projectRow}
+                onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                <div style={{ flex: 1 }} onClick={() => onOpen(p)}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <StageBadge stage={p.stage} />
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>{p.name}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: C.gold, lineHeight: 1.5 }}>→ {p.nextAction}</div>
+                  {p.requestor && <div style={{ fontSize: 10, color: C.muted, fontFamily: "monospace", marginTop: 3 }}>{p.requestor}</div>}
                 </div>
+                <button style={{ ...css.btn(), fontSize: 10, padding: "3px 8px", flexShrink: 0 }}
+                  onClick={() => { setQuickNote({ projectId: p.id, projectName: p.name }); setNoteDraft(""); }}>
+                  + Note
+                </button>
               </div>
-            );
-          })}
-        </div>
-      </div>
-      <div style={{ ...css.card }}>
-        <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: C.muted, fontFamily: "monospace", marginBottom: 16 }}>Recent activity</div>
-        {projects.flatMap(p => p.activity.map(a => ({ ...a, projectName: p.name, stage: p.stage }))).sort((a, b) => a.daysAgo - b.daysAgo).slice(0, 8).map((a, i) => (
-          <div key={i} style={{ display: "flex", gap: 12, padding: "10px 0", borderBottom: `1px solid rgba(255,255,255,0.04)` }}>
-            <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(74,144,217,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: C.blue, flexShrink: 0, fontFamily: "monospace" }}>{a.initials}</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, color: C.text }}>{a.text}</div>
-              <div style={{ fontSize: 10, color: C.muted, marginTop: 2, fontFamily: "monospace", display: "flex", alignItems: "center", gap: 6 }}>
-                {a.projectName} · <StageBadge stage={a.stage} /> · {updatedLabel(a.daysAgo)}
-              </div>
+            ))}
+          </div>
+
+          {/* Pipeline by stage */}
+          <div style={{ ...css.card }}>
+            <div style={S.sectionLabel}>Pipeline</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {STAGES.map(s => {
+                const cfg = STAGE_CONFIG[s];
+                const count = byStage[s];
+                const pct = total > 0 ? (count / total) * 100 : 0;
+                return (
+                  <div key={s}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                      <span style={{ fontSize: 11, color: count > 0 ? "#fff" : C.muted, fontFamily: "monospace" }}>{cfg.label}</span>
+                      <span style={{ fontSize: 11, color: cfg.color, fontFamily: "monospace", fontWeight: 700 }}>{count}</span>
+                    </div>
+                    <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${pct}%`, background: cfg.color, borderRadius: 2, transition: "width 0.5s" }} />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        ))}
+        </div>
+
+        {/* RIGHT COLUMN */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+          {/* Needs attention */}
+          <div style={{ ...css.card }}>
+            <div style={S.sectionLabel}>
+              Needs attention
+              {needsAttention.length > 0 && <span style={{ marginLeft: 8, background: C.red + "33", color: C.red, fontSize: 9, padding: "1px 7px", borderRadius: 10, fontFamily: "monospace", fontWeight: 700 }}>{needsAttention.length}</span>}
+            </div>
+            {needsAttention.length === 0 && (
+              <div style={{ fontSize: 12, color: C.muted, fontStyle: "italic" }}>All clear — nothing needs attention today.</div>
+            )}
+            {needsAttention.slice(0, 5).map(p => {
+              const lastActivity = p.activity?.[0]?.created_at;
+              const daysSince = lastActivity ? Math.floor((Date.now() - new Date(lastActivity)) / 86400000) : null;
+              const isStale = daysSince !== null && daysSince > 7;
+              const pendingApprovals = (p.signoffs || []).filter(s => s.status === "pending").length;
+              return (
+                <div key={p.id} style={S.projectRow} onClick={() => onOpen(p)}
+                  onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <StageBadge stage={p.stage} />
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>{p.name}</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {isStale && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 10, background: "rgba(226,75,74,0.15)", color: C.red, fontFamily: "monospace" }}>No activity {daysSince}d</span>}
+                      {pendingApprovals > 0 && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 10, background: "rgba(200,146,42,0.15)", color: C.gold, fontFamily: "monospace" }}>{pendingApprovals} approval{pendingApprovals > 1 ? "s" : ""} pending</span>}
+                      {p.nextAction && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 10, background: "rgba(93,184,138,0.15)", color: C.green, fontFamily: "monospace" }}>→ {p.nextAction.slice(0, 40)}{p.nextAction.length > 40 ? "…" : ""}</span>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Recent log activity */}
+          <div style={{ ...css.card }}>
+            <div style={S.sectionLabel}>Recent activity</div>
+            {recentActivity.length === 0 && (
+              <div style={{ fontSize: 12, color: C.muted, fontStyle: "italic" }}>No recent log entries.</div>
+            )}
+            {recentActivity.map((a, i) => {
+              const typeConfig = LOG_TYPES?.[a.type] || { label: "Note", color: C.muted };
+              return (
+                <div key={i} style={{ display: "flex", gap: 10, padding: "10px 0", borderBottom: `1px solid rgba(255,255,255,0.04)`, cursor: "pointer" }}
+                  onClick={() => onOpen(projects.find(p => p.id === a.projectId))}
+                  onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                  <div style={{ width: 6, borderRadius: 3, background: typeConfig.color, flexShrink: 0, alignSelf: "stretch", minHeight: 8 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, color: C.muted, fontFamily: "monospace", marginBottom: 2, display: "flex", gap: 6 }}>
+                      <span style={{ color: "#fff", fontWeight: 700 }}>{a.projectName}</span>
+                      <span>·</span>
+                      <span>{formatLogDate(a.created_at)}</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: C.text, lineHeight: 1.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.text}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
+
+      {/* Quick note modal */}
+      {quickNote && (
+        <div style={css.overlay} onClick={e => e.target === e.currentTarget && setQuickNote(null)}>
+          <div style={{ ...css.modal, maxWidth: 480 }}>
+            <div style={{ fontSize: 13, color: C.muted, fontFamily: "monospace", marginBottom: 4 }}>Quick note</div>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 700, color: "#fff", marginBottom: 16 }}>{quickNote.projectName}</div>
+            <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+              {Object.entries(LOG_TYPES).filter(([k]) => k !== "system").map(([key, val]) => (
+                <div key={key} onClick={() => setNoteType(key)}
+                  style={{ fontSize: 10, fontWeight: noteType === key ? 700 : 400, padding: "4px 12px", borderRadius: 20, cursor: "pointer", fontFamily: "monospace", border: `1px solid ${noteType === key ? val.color : C.border}`, background: noteType === key ? val.color + "22" : "transparent", color: noteType === key ? val.color : C.muted }}>
+                  {val.label}
+                </div>
+              ))}
+            </div>
+            <textarea value={noteDraft} onChange={e => setNoteDraft(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submitQuickNote(); if (e.key === "Escape") setQuickNote(null); }}
+              placeholder="What happened? What was decided? What's next? (Cmd+Enter to save)"
+              rows={4} style={{ ...css.input, resize: "vertical", lineHeight: 1.7, marginBottom: 12 }} autoFocus />
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button style={css.btn()} onClick={() => setQuickNote(null)}>Cancel</button>
+              <button style={{ ...css.btn("primary"), opacity: (!noteDraft.trim() || noteSaving) ? 0.5 : 1 }}
+                onClick={submitQuickNote} disabled={!noteDraft.trim() || noteSaving}>
+                {noteSaving ? "Saving…" : "Save note →"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1937,10 +2498,7 @@ export default function App() {
       <div style={css.body}>
         {tab === "dashboard" && (
           <>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-              <div style={css.secHead}>Overview</div>
-            </div>
-            <Dashboard projects={projects} />
+            <Dashboard projects={projects} onOpen={openProject} onUpdate={updateProject} />
           </>
         )}
         {tab === "projects" && !syncedProject && (
