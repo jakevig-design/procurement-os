@@ -2389,6 +2389,219 @@ const TABS = [
   { id: "projects",  label: "Projects" },
 ];
 
+// ── AUTH COMPONENTS ───────────────────────────────────────────────────────────
+
+function LoginScreen({ onLogin }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState("login"); // login | signup | forgot
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) setError(error.message);
+    setLoading(false);
+  }
+
+  async function handleSignup(e) {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) setError(error.message);
+    else setError("Check your email to confirm your account.");
+    setLoading(false);
+  }
+
+  async function handleForgot(e) {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) setError(error.message);
+    else setError("Password reset email sent.");
+    setLoading(false);
+  }
+
+  const isInfo = error && (error.includes("Check your email") || error.includes("reset email sent"));
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Lora', Georgia, serif" }}>
+      <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+      <div style={{ width: 420, background: "#FFFFFF", border: `1px solid ${C.border}`, borderRadius: 12, padding: "40px 40px 32px", boxShadow: "0 4px 24px rgba(0,0,0,0.08)" }}>
+        {/* Logo */}
+        <div style={{ marginBottom: 32, textAlign: "center" }}>
+          <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 800, color: C.text, letterSpacing: 1 }}>
+            PROCUREMENT <span style={{ color: C.gold }}>OS</span>
+          </div>
+          <div style={{ fontSize: 13, color: C.muted, marginTop: 6 }}>
+            {mode === "login" ? "Sign in to your account" : mode === "signup" ? "Create your account" : "Reset your password"}
+          </div>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={mode === "login" ? handleLogin : mode === "signup" ? handleSignup : handleForgot}>
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, color: C.muted, fontFamily: "monospace", letterSpacing: 0.5, marginBottom: 5 }}>EMAIL</div>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+              style={{ ...css.input, fontSize: 14 }} placeholder="you@company.com" required autoFocus />
+          </div>
+
+          {mode !== "forgot" && (
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 11, color: C.muted, fontFamily: "monospace", letterSpacing: 0.5, marginBottom: 5 }}>PASSWORD</div>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                style={{ ...css.input, fontSize: 14 }} placeholder="••••••••" required />
+            </div>
+          )}
+
+          {error && (
+            <div style={{ padding: "10px 14px", borderRadius: 6, marginBottom: 16, fontSize: 13,
+              background: isInfo ? "rgba(21,128,61,0.08)" : "rgba(220,38,38,0.08)",
+              color: isInfo ? C.green : C.red,
+              border: `1px solid ${isInfo ? "rgba(21,128,61,0.2)" : "rgba(220,38,38,0.2)"}` }}>
+              {error}
+            </div>
+          )}
+
+          <button type="submit" disabled={loading}
+            style={{ ...css.btn("primary"), width: "100%", padding: "10px 0", fontSize: 14, opacity: loading ? 0.7 : 1 }}>
+            {loading ? "Please wait…" : mode === "login" ? "Sign in →" : mode === "signup" ? "Create account →" : "Send reset email →"}
+          </button>
+        </form>
+
+        {/* Mode switcher */}
+        <div style={{ marginTop: 20, display: "flex", justifyContent: "center", gap: 16, fontSize: 13, color: C.muted }}>
+          {mode === "login" && <>
+            <span style={{ cursor: "pointer", color: C.gold }} onClick={() => { setMode("signup"); setError(""); }}>Create account</span>
+            <span>·</span>
+            <span style={{ cursor: "pointer", color: C.gold }} onClick={() => { setMode("forgot"); setError(""); }}>Forgot password</span>
+          </>}
+          {mode !== "login" && (
+            <span style={{ cursor: "pointer", color: C.gold }} onClick={() => { setMode("login"); setError(""); }}>Back to sign in</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MFAEnroll({ onComplete, onSkip }) {
+  const [qr, setQr] = useState("");
+  const [secret, setSecret] = useState("");
+  const [factorId, setFactorId] = useState("");
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState("qr"); // qr | verify
+
+  useEffect(() => {
+    supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: "Procurement OS" }).then(({ data, error }) => {
+      if (error) { setError(error.message); return; }
+      setQr(data.totp.qr_code);
+      setSecret(data.totp.secret);
+      setFactorId(data.id);
+    });
+  }, []);
+
+  async function verify() {
+    setLoading(true);
+    setError("");
+    const { data: challenge } = await supabase.auth.mfa.challenge({ factorId });
+    const { error } = await supabase.auth.mfa.verify({ factorId, challengeId: challenge.id, code });
+    if (error) { setError(error.message); setLoading(false); return; }
+    setLoading(false);
+    onComplete();
+  }
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Lora', Georgia, serif" }}>
+      <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+      <div style={{ width: 420, background: "#FFFFFF", border: `1px solid ${C.border}`, borderRadius: 12, padding: "40px", boxShadow: "0 4px 24px rgba(0,0,0,0.08)" }}>
+        <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 800, color: C.text, marginBottom: 8 }}>Set up two-factor authentication</div>
+        <div style={{ fontSize: 13, color: C.muted, marginBottom: 24, lineHeight: 1.6 }}>
+          Scan this QR code with Google Authenticator, Authy, or any TOTP app. Then enter the 6-digit code to verify.
+        </div>
+
+        {qr && <div style={{ textAlign: "center", marginBottom: 20 }}>
+          <img src={qr} alt="QR code" style={{ width: 180, height: 180, border: `1px solid ${C.border}`, borderRadius: 8 }} />
+          <div style={{ fontSize: 11, color: C.muted, fontFamily: "monospace", marginTop: 8 }}>Manual code: {secret}</div>
+        </div>}
+
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 11, color: C.muted, fontFamily: "monospace", letterSpacing: 0.5, marginBottom: 5 }}>VERIFICATION CODE</div>
+          <input value={code} onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            style={{ ...css.input, fontSize: 20, letterSpacing: 6, textAlign: "center", fontFamily: "monospace" }}
+            placeholder="000000" maxLength={6} />
+        </div>
+
+        {error && <div style={{ fontSize: 13, color: C.red, marginBottom: 16 }}>{error}</div>}
+
+        <button onClick={verify} disabled={code.length !== 6 || loading}
+          style={{ ...css.btn("primary"), width: "100%", padding: "10px 0", fontSize: 14, opacity: (code.length !== 6 || loading) ? 0.5 : 1 }}>
+          {loading ? "Verifying…" : "Enable two-factor auth →"}
+        </button>
+
+        <div style={{ textAlign: "center", marginTop: 16 }}>
+          <span style={{ fontSize: 13, color: C.muted, cursor: "pointer" }} onClick={onSkip}>Skip for now</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MFAVerify({ onComplete }) {
+  const [factors, setFactors] = useState([]);
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.mfa.listFactors().then(({ data }) => {
+      setFactors(data?.totp || []);
+    });
+  }, []);
+
+  async function verify() {
+    if (!factors.length) return;
+    setLoading(true);
+    setError("");
+    const factorId = factors[0].id;
+    const { data: challenge } = await supabase.auth.mfa.challenge({ factorId });
+    const { error } = await supabase.auth.mfa.verify({ factorId, challengeId: challenge.id, code });
+    if (error) { setError(error.message); setLoading(false); return; }
+    setLoading(false);
+    onComplete();
+  }
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Lora', Georgia, serif" }}>
+      <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+      <div style={{ width: 380, background: "#FFFFFF", border: `1px solid ${C.border}`, borderRadius: 12, padding: "40px", boxShadow: "0 4px 24px rgba(0,0,0,0.08)" }}>
+        <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 800, color: C.text, marginBottom: 8 }}>Two-factor authentication</div>
+        <div style={{ fontSize: 13, color: C.muted, marginBottom: 24 }}>Enter the 6-digit code from your authenticator app.</div>
+
+        <div style={{ marginBottom: 16 }}>
+          <input value={code} onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            style={{ ...css.input, fontSize: 24, letterSpacing: 8, textAlign: "center", fontFamily: "monospace" }}
+            placeholder="000000" maxLength={6} autoFocus />
+        </div>
+
+        {error && <div style={{ fontSize: 13, color: C.red, marginBottom: 16 }}>{error}</div>}
+
+        <button onClick={verify} disabled={code.length !== 6 || loading}
+          style={{ ...css.btn("primary"), width: "100%", padding: "10px 0", fontSize: 14, opacity: (code.length !== 6 || loading) ? 0.5 : 1 }}>
+          {loading ? "Verifying…" : "Verify →"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [tab, setTab] = useState("dashboard");
   const [projects, setProjects] = useState(SEED_PROJECTS);
@@ -2396,18 +2609,60 @@ export default function App() {
   const [stageFilter, setStageFilter] = useState("all");
   const [showNew, setShowNew] = useState(false);
   const [dbStatus, setDbStatus] = useState("loading");
+  const [session, setSession] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authState, setAuthState] = useState("checking"); // checking | login | mfa_enroll | mfa_verify | app
+
+  useEffect(() => {
+    // Check current session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) {
+        setAuthState("login");
+        setAuthLoading(false);
+        return;
+      }
+      setSession(session);
+      await checkMFAState(session);
+      setAuthLoading(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setSession(session);
+      if (!session) { setAuthState("login"); return; }
+      if (event === "SIGNED_IN") await checkMFAState(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  async function checkMFAState(session) {
+    const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (data?.nextLevel === "aal2" && data?.currentLevel !== "aal2") {
+      // Has MFA enrolled but not yet verified this session
+      setAuthState("mfa_verify");
+    } else if (data?.currentLevel === "aal1" && data?.nextLevel === "aal1") {
+      // No MFA enrolled yet — prompt to enroll
+      setAuthState("mfa_enroll");
+    } else {
+      // MFA verified or not required
+      setAuthState("app");
+    }
+  }
 
   // Load from Supabase on mount
   useEffect(() => {
+    if (authState !== "app") return;
     loadAllProjects().then(data => {
       if (data && data.length > 0) {
         setProjects(data);
         setDbStatus("live");
       } else {
-        setDbStatus("seed");
+        setProjects([]);
+        setDbStatus("live");
       }
     }).catch(() => setDbStatus("error"));
-  }, []);
+  }, [authState]);
 
   function updateProject(id, updates) {
     // Optimistic UI
@@ -2463,6 +2718,16 @@ export default function App() {
 
   const syncedProject = selectedProject ? projects.find(p => p.id === selectedProject.id) : null;
 
+  // Auth gate
+  if (authLoading) return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ fontSize: 13, color: C.muted, fontFamily: "monospace" }}>Loading…</div>
+    </div>
+  );
+  if (authState === "login") return <LoginScreen />;
+  if (authState === "mfa_enroll") return <MFAEnroll onComplete={() => setAuthState("app")} onSkip={() => setAuthState("app")} />;
+  if (authState === "mfa_verify") return <MFAVerify onComplete={() => setAuthState("app")} />;
+
   return (
     <div style={css.app}>
       <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
@@ -2472,13 +2737,13 @@ export default function App() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {dbStatus === "live" && (
-            <div style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(93,184,138,0.1)", border: "1px solid rgba(93,184,138,0.3)", borderRadius: 5, padding: "4px 10px", fontSize: 11, color: C.green, fontFamily: "monospace" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(21,128,61,0.08)", border: "1px solid rgba(21,128,61,0.2)", borderRadius: 5, padding: "4px 10px", fontSize: 11, color: C.green, fontFamily: "monospace" }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.green, display: "inline-block" }} />
               DB LIVE
             </div>
           )}
           {dbStatus === "error" && (
-            <div style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(226,75,74,0.1)", border: "1px solid rgba(226,75,74,0.3)", borderRadius: 5, padding: "4px 10px", fontSize: 11, color: C.red, fontFamily: "monospace" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 5, padding: "4px 10px", fontSize: 11, color: C.red, fontFamily: "monospace" }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.red, display: "inline-block" }} />
               DB ERROR
             </div>
@@ -2487,6 +2752,7 @@ export default function App() {
             <div style={{ fontSize: 11, color: C.muted, fontFamily: "monospace" }}>CONNECTING…</div>
           )}
           <button style={css.btn("primary")} onClick={() => setShowNew(true)}>+ New project</button>
+          <button style={{ ...css.btn(), fontSize: 11 }} onClick={() => supabase.auth.signOut()}>Sign out</button>
         </div>
       </div>
       <div style={css.nav}>
