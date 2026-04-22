@@ -1049,9 +1049,9 @@ function SummaryTab({ project, riskScore, riskColor }) {
   const pendingSignoffs = (project.signoffs || []).filter(s => s.status === "pending" || s.status === "required");
 
   const S = {
-    page: { background: "#0F0F12", border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden", maxWidth: 860, margin: "0 auto" },
+    page: { background: "#FFFFFF", border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden", maxWidth: 860, margin: "0 auto", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" },
     header: { background: "#F9F8F8", borderBottom: `1px solid ${C.border}`, padding: "28px 36px" },
-    body: { padding: "28px 36px" },
+    body: { padding: "28px 36px", background: "#FFFFFF" },
     section: { marginBottom: 28 },
     sectionLabel: { fontSize: 9, letterSpacing: 2.5, textTransform: "uppercase", color: C.muted, fontFamily: "monospace", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 },
     sectionLine: { flex: 1, height: 1, background: C.border },
@@ -2088,13 +2088,14 @@ function ProjectList({ projects, onOpen, stageFilter, setStageFilter }) {
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
 
-function Dashboard({ projects, onOpen, onUpdate }) {
+function Dashboard({ projects, onOpen, onUpdate, onOpenProjects }) {
   const [quickNote, setQuickNote] = useState(null); // { projectId, projectName }
   const [noteDraft, setNoteDraft] = useState("");
   const [noteType, setNoteType] = useState("note");
   const [noteSaving, setNoteSaving] = useState(false);
 
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  // today kept for potential future use
 
   // Attention items — needs action today
   const needsAttention = projects.filter(p => {
@@ -2150,20 +2151,24 @@ function Dashboard({ projects, onOpen, onUpdate }) {
         <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 28, fontWeight: 700, color: C.text }}>
           Good morning.
         </div>
-        <div style={{ fontSize: 11, color: C.muted, fontFamily: "monospace" }}>{today.toUpperCase()}</div>
       </div>
 
       {/* KPI strip */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: "1.5rem" }}>
         {[
-          { label: "Active projects", value: total },
-          { label: "In flight", value: inFlight },
-          { label: "Pending approval", value: pendingApproval, alert: pendingApproval > 0 },
-          { label: "Pipeline value", value: fmt(totalBudget) },
+          { label: "Active projects",   value: total,           filter: "all",      alert: false },
+          { label: "In flight",         value: inFlight,        filter: "execution", alert: false },
+          { label: "Pending approval",  value: pendingApproval, filter: "approval",  alert: pendingApproval > 0 },
+          { label: "Pipeline value",    value: fmt(totalBudget),filter: null,        alert: false },
         ].map(m => (
-          <div key={m.label} style={{ background: m.alert ? "rgba(200,146,42,0.08)" : "rgba(0,0,0,0.03)", border: `1px solid ${m.alert ? "rgba(200,146,42,0.3)" : C.border}`, borderRadius: 8, padding: "14px 16px" }}>
+          <div key={m.label}
+            onDoubleClick={() => m.filter && onOpenProjects(m.filter)}
+            style={{ background: m.alert ? "rgba(194,65,12,0.06)" : "#FFFFFF", border: `1px solid ${m.alert ? "rgba(194,65,12,0.3)" : C.border}`, borderRadius: 8, padding: "14px 16px", cursor: m.filter ? "pointer" : "default", boxShadow: "0 1px 3px rgba(0,0,0,0.04)", transition: "box-shadow 0.15s" }}
+            onMouseEnter={e => { if (m.filter) e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1)"; }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.04)"; }}>
             <div style={{ fontSize: 9, color: m.alert ? C.gold : C.muted, fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>{m.label.toUpperCase()}</div>
-            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 30, fontWeight: 700, color: m.alert ? C.gold : "#fff", lineHeight: 1 }}>{m.value}</div>
+            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 30, fontWeight: 700, color: m.alert ? C.gold : C.text, lineHeight: 1 }}>{m.value}</div>
+            {m.filter && <div style={{ fontSize: 9, color: C.muted, fontFamily: "monospace", marginTop: 6 }}>Double-click to view</div>}
           </div>
         ))}
       </div>
@@ -2380,7 +2385,7 @@ function NewProjectModal({ onSave, onClose }) {
 // ── ROOT ──────────────────────────────────────────────────────────────────────
 
 const TABS = [
-  { id: "dashboard", label: "Overview" },
+  { id: "dashboard", label: "Command Center" },
   { id: "projects",  label: "Projects" },
 ];
 
@@ -2464,12 +2469,8 @@ export default function App() {
       <div style={css.header}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
           <div style={css.wordmark}>PROCUREMENT <span style={{ color: C.gold }}>OS</span></div>
-          <div style={{ fontSize: 10, color: C.muted, letterSpacing: 2, fontFamily: "monospace" }}>PROJECT LIFECYCLE</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ fontSize: 10, color: C.muted, fontFamily: "monospace", letterSpacing: 1 }}>
-            {new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }).toUpperCase()}
-          </div>
           {dbStatus === "live" && (
             <div style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(93,184,138,0.1)", border: "1px solid rgba(93,184,138,0.3)", borderRadius: 5, padding: "4px 10px", fontSize: 11, color: C.green, fontFamily: "monospace" }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.green, display: "inline-block" }} />
@@ -2498,7 +2499,7 @@ export default function App() {
       <div style={css.body}>
         {tab === "dashboard" && (
           <>
-            <Dashboard projects={projects} onOpen={openProject} onUpdate={updateProject} />
+            <Dashboard projects={projects} onOpen={openProject} onUpdate={updateProject} onOpenProjects={(filter) => { setStageFilter(filter); setTab("projects"); }} />
           </>
         )}
         {tab === "projects" && !syncedProject && (
